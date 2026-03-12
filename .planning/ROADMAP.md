@@ -12,7 +12,7 @@ KiwoomDayTrader is built bottom-up from its hardest constraint: the Kiwoom OpenA
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: API Foundation** - Kiwoom OCX connectivity, event routing, TR throttling, real-time data reception
+- [x] **Phase 1: API Foundation** - Kiwoom OCX connectivity, event routing, TR throttling, real-time data reception (completed 2026-03-12)
 - [ ] **Phase 2: Order Execution & Risk Management** - Automated order lifecycle, stop-loss/trailing stop, position limits, market-hours controls
 - [ ] **Phase 3: Data Pipeline & Strategy Engine** - Technical indicator calculation, composite condition engine for automated entry/exit
 - [ ] **Phase 4: Monitoring & Operations** - PyQt5 GUI dashboard, real-time charts, strategy config UI, notifications
@@ -102,7 +102,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. API Foundation | 1/3 | In Progress | - |
+| 1. API Foundation | 1/3 | Complete    | 2026-03-12 |
 | 2. Order Execution & Risk Management | 0/0 | Not started | - |
 | 3. Data Pipeline & Strategy Engine | 0/0 | Not started | - |
 | 4. Monitoring & Operations | 0/0 | Not started | - |
