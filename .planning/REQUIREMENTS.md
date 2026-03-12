@@ -9,9 +9,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### API/연결
 
-- [ ] **CONN-01**: 키움 OpenAPI+ OCX 로그인 및 세션 유지, 연결 끊김 시 자동 재접속
-- [ ] **CONN-02**: TR 요청 스로틀링 큐 (3.6초/건 제한 준수, QTimer 기반)
-- [ ] **CONN-03**: 실시간 시세 이벤트 수신 (호가, 체결, 거래량 — SetRealReg 기반)
+- [x] **CONN-01**: 키움 OpenAPI+ OCX 로그인 및 세션 유지, 연결 끊김 시 자동 재접속
+- [x] **CONN-02**: TR 요청 스로틀링 큐 (3.6초/건 제한 준수, QTimer 기반)
+- [x] **CONN-03**: 실시간 시세 이벤트 수신 (호가, 체결, 거래량 — SetRealReg 기반)
 
 ### 매매 엔진
 
@@ -80,9 +80,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CONN-01 | Phase 1 | Pending |
-| CONN-02 | Phase 1 | Pending |
-| CONN-03 | Phase 1 | Pending |
+| CONN-01 | Phase 1 | Complete |
+| CONN-02 | Phase 1 | Complete |
+| CONN-03 | Phase 1 | Complete |
 | TRAD-01 | Phase 3 | Pending |
 | TRAD-02 | Phase 3 | Pending |
 | TRAD-03 | Phase 2 | Pending |

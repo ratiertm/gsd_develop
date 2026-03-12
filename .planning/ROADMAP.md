@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Project scaffolding, config, logging, constants, and test infrastructure
+- [x] 01-01-PLAN.md — Project scaffolding, config, logging, constants, and test infrastructure
 - [ ] 01-02-PLAN.md — KiwoomAPI wrapper, event handler registry, and session manager
 - [ ] 01-03-PLAN.md — TR throttle queue, real-time data manager, and main.py wiring
 
@@ -102,7 +102,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. API Foundation | 0/3 | Planning complete | - |
+| 1. API Foundation | 1/3 | In Progress | - |
 | 2. Order Execution & Risk Management | 0/0 | Not started | - |
 | 3. Data Pipeline & Strategy Engine | 0/0 | Not started | - |
 | 4. Monitoring & Operations | 0/0 | Not started | - |
