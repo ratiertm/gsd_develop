@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "enabled": true,
+  "teamName": "",
+  "feature": "",
+  "pdcaPhase": "plan",
+  "orchestrationPattern": "leader",
+  "ctoAgent": "opus",
+  "startedAt": "2026-03-12T16:55:30.474Z",
+  "lastUpdated": "2026-03-12T17:02:10.490Z",
+  "teammates": [
+    {
+      "name": "a4d8ecab0d289ade7",
+      "role": "gsd-phase-researcher",
+      "model": "sonnet",
+      "status": "completed",
+      "currentTask": null,
+      "taskId": null,
+      "startedAt": "2026-03-12T16:55:30.474Z",
+      "lastActivityAt": "2026-03-12T17:01:14.147Z"
+    },
+    {
+      "name": "aac377f5722b000a5",
+      "role": "gsd-planner",
+      "model": "sonnet",
+      "status": "spawning",
+      "currentTask": null,
+      "taskId": null,
+      "startedAt": "2026-03-12T17:02:10.489Z",
+      "lastActivityAt": "2026-03-12T17:02:10.489Z"
+    }
+  ],
+  "progress": {
+    "totalTasks": 0,
+    "completedTasks": 0,
+    "inProgressTasks": 0,
+    "failedTasks": 0,
+    "pendingTasks": 0
+  },
+  "recentMessages": [],
+  "sessionId": "72f8e1f4-b2f9-4227-b0a3-03df3f7b0145"
+}

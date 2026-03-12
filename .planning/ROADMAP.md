@@ -29,11 +29,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. TR requests are queued and dispatched at compliant intervals (3.6s+) -- rapid-fire requests never reach the server
   3. Real-time price, volume, and orderbook data streams into the application for registered symbols via SetRealReg events
   4. Project structure, logging infrastructure, and configuration management are operational
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — Project scaffolding, config, logging, constants, and test infrastructure
+- [ ] 01-02-PLAN.md — KiwoomAPI wrapper, event handler registry, and session manager
+- [ ] 01-03-PLAN.md — TR throttle queue, real-time data manager, and main.py wiring
 
 ### Phase 2: Order Execution & Risk Management
 **Goal**: Orders execute reliably with full lifecycle tracking, and risk guards prevent uncontrolled losses before any strategy runs
@@ -101,7 +102,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. API Foundation | 0/0 | Not started | - |
+| 1. API Foundation | 0/3 | Planning complete | - |
 | 2. Order Execution & Risk Management | 0/0 | Not started | - |
 | 3. Data Pipeline & Strategy Engine | 0/0 | Not started | - |
 | 4. Monitoring & Operations | 0/0 | Not started | - |
