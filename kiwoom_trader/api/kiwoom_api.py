@@ -1,0 +1,164 @@
+"""Kiwoom OpenAPI+ QAxWidget COM wrapper.
+
+ALL COM calls happen on the main thread where the OCX was instantiated
+(STA COM model). This class wraps dynamicCall for type safety and logging.
+
+Note: Cannot be unit-tested without Windows + Kiwoom OpenAPI+ installed.
+Use mock_kiwoom_api fixture from conftest.py for dependent module tests.
+"""
+
+from PyQt5.QAxContainer import QAxWidget
+from PyQt5.QtCore import pyqtSignal, QObject
+
+from loguru import logger
+
+
+class KiwoomAPI(QObject):
+    """Kiwoom OCX wrapper. ALL COM calls happen on the main thread."""
+
+    # Signals for cross-component communication
+    connected = pyqtSignal(int)  # err_code from OnEventConnect
+    disconnected = pyqtSignal()
+    tr_data_received = pyqtSignal(
+        str, str, str, str, str, int, str, str, str
+    )  # screen_no, rq_name, tr_code, record_name, prev_next, data_len, err_code, msg1, msg2
+    real_data_received = pyqtSignal(str, str, str)  # code, real_type, real_data
+
+    def __init__(self):
+        super().__init__()
+        self.ocx = QAxWidget("KHOPENAPI.KHOpenAPICtrl.1")
+        self._connect_events()
+        logger.info("KiwoomAPI initialized with KHOPENAPI.KHOpenAPICtrl.1")
+
+    def _connect_events(self):
+        """Connect OCX COM events to internal signal emitters."""
+        self.ocx.OnEventConnect.connect(self._on_event_connect)
+        self.ocx.OnReceiveTrData.connect(self._on_receive_tr_data)
+        self.ocx.OnReceiveRealData.connect(self._on_receive_real_data)
+        logger.debug("OCX events connected")
+
+    # --- Login ---
+
+    def comm_connect(self):
+        """Open Kiwoom login dialog. Result comes via connected signal."""
+        logger.debug("CommConnect() called")
+        self.ocx.dynamicCall("CommConnect()")
+
+    def get_connect_state(self) -> int:
+        """Return connection state: 0=disconnected, 1=connected."""
+        state = self.ocx.dynamicCall("GetConnectState()")
+        logger.debug(f"GetConnectState() -> {state}")
+        return state
+
+    # --- TR Request ---
+
+    def set_input_value(self, id: str, value: str):
+        """Set input value for the next TR request."""
+        logger.debug(f"SetInputValue({id}, {value})")
+        self.ocx.dynamicCall("SetInputValue(QString, QString)", id, value)
+
+    def comm_rq_data(
+        self, rq_name: str, tr_code: str, prev_next: int, screen_no: str
+    ) -> int:
+        """Submit a TR data request. Returns 0 on success."""
+        logger.debug(f"CommRqData({rq_name}, {tr_code}, {prev_next}, {screen_no})")
+        return self.ocx.dynamicCall(
+            "CommRqData(QString, QString, int, QString)",
+            rq_name,
+            tr_code,
+            prev_next,
+            screen_no,
+        )
+
+    def get_comm_data(
+        self, tr_code: str, record_name: str, index: int, item_name: str
+    ) -> str:
+        """Get data from a TR response. Always returns stripped string."""
+        ret = self.ocx.dynamicCall(
+            "GetCommData(QString, QString, int, QString)",
+            tr_code,
+            record_name,
+            index,
+            item_name,
+        )
+        return ret.strip()
+
+    # --- Real-time ---
+
+    def set_real_reg(
+        self, screen_no: str, code_list: str, fid_list: str, real_type: str
+    ):
+        """Register for real-time data.
+
+        Args:
+            screen_no: 4-digit screen number string
+            code_list: Semicolon-separated stock codes
+            fid_list: Semicolon-separated FID numbers
+            real_type: "0" = replace existing, "1" = add to existing
+        """
+        logger.debug(
+            f"SetRealReg({screen_no}, {code_list}, {fid_list}, {real_type})"
+        )
+        self.ocx.dynamicCall(
+            "SetRealReg(QString, QString, QString, QString)",
+            screen_no,
+            code_list,
+            fid_list,
+            real_type,
+        )
+
+    def get_comm_real_data(self, code: str, fid: int) -> str:
+        """Get real-time data for a FID. Must be called within OnReceiveRealData context.
+
+        Always returns stripped string.
+        """
+        ret = self.ocx.dynamicCall("GetCommRealData(QString, int)", code, fid)
+        return ret.strip()
+
+    def set_real_remove(self, screen_no: str, code: str):
+        """Remove real-time data registration for a stock code on a screen."""
+        logger.debug(f"SetRealRemove({screen_no}, {code})")
+        self.ocx.dynamicCall(
+            "SetRealRemove(QString, QString)", screen_no, code
+        )
+
+    # --- OCX Event Handlers (emit signals) ---
+
+    def _on_event_connect(self, err_code: int):
+        """Handle OnEventConnect COM event."""
+        if err_code == 0:
+            logger.info("OnEventConnect: Login successful")
+        else:
+            logger.error(f"OnEventConnect: Login failed (err_code={err_code})")
+        self.connected.emit(err_code)
+
+    def _on_receive_tr_data(
+        self,
+        screen_no,
+        rq_name,
+        tr_code,
+        record_name,
+        prev_next,
+        data_len,
+        err_code,
+        msg1,
+        msg2,
+    ):
+        """Handle OnReceiveTrData COM event."""
+        logger.debug(f"OnReceiveTrData: rq_name={rq_name}, tr_code={tr_code}")
+        self.tr_data_received.emit(
+            screen_no,
+            rq_name,
+            tr_code,
+            record_name,
+            prev_next,
+            int(data_len),
+            err_code,
+            msg1,
+            msg2,
+        )
+
+    def _on_receive_real_data(self, code, real_type, real_data):
+        """Handle OnReceiveRealData COM event."""
+        logger.debug(f"OnReceiveRealData: code={code}, real_type={real_type}")
+        self.real_data_received.emit(code, real_type, real_data)
