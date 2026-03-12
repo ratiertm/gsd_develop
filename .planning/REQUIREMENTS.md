@@ -80,32 +80,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CONN-01 | — | Pending |
-| CONN-02 | — | Pending |
-| CONN-03 | — | Pending |
-| TRAD-01 | — | Pending |
-| TRAD-02 | — | Pending |
-| TRAD-03 | — | Pending |
-| TRAD-04 | — | Pending |
-| RISK-01 | — | Pending |
-| RISK-02 | — | Pending |
-| RISK-03 | — | Pending |
-| RISK-04 | — | Pending |
-| GUI-01 | — | Pending |
-| GUI-02 | — | Pending |
-| GUI-03 | — | Pending |
-| NOTI-01 | — | Pending |
-| NOTI-02 | — | Pending |
-| NOTI-03 | — | Pending |
-| BACK-01 | — | Pending |
-| BACK-02 | — | Pending |
-| BACK-03 | — | Pending |
+| CONN-01 | Phase 1 | Pending |
+| CONN-02 | Phase 1 | Pending |
+| CONN-03 | Phase 1 | Pending |
+| TRAD-01 | Phase 3 | Pending |
+| TRAD-02 | Phase 3 | Pending |
+| TRAD-03 | Phase 2 | Pending |
+| TRAD-04 | Phase 2 | Pending |
+| RISK-01 | Phase 2 | Pending |
+| RISK-02 | Phase 2 | Pending |
+| RISK-03 | Phase 2 | Pending |
+| RISK-04 | Phase 2 | Pending |
+| GUI-01 | Phase 4 | Pending |
+| GUI-02 | Phase 4 | Pending |
+| GUI-03 | Phase 4 | Pending |
+| NOTI-01 | Phase 4 | Pending |
+| NOTI-02 | Phase 4 | Pending |
+| NOTI-03 | Phase 4 | Pending |
+| BACK-01 | Phase 5 | Pending |
+| BACK-02 | Phase 5 | Pending |
+| BACK-03 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20 ⚠️
+- Mapped to phases: 20
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-13*
-*Last updated: 2026-03-13 after initial definition*
+*Last updated: 2026-03-13 after roadmap creation*
