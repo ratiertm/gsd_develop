@@ -87,12 +87,18 @@ class TestNotifierRateLimit:
     @patch("kiwoom_trader.gui.notification.notifier.DiscordSendWorker")
     def test_discord_rate_limit(self, mock_worker_cls):
         """Notifier respects discord_rate_limit_sec (drops messages within interval)."""
+        from kiwoom_trader.gui.notification.notifier import Notifier
+
         mock_worker = MagicMock()
         mock_worker_cls.return_value = mock_worker
 
-        notifier = self._make_notifier(
-            discord_enabled=True, discord_rate_limit_sec=10
-        )
+        config = {
+            "gui_popup_enabled": False,
+            "log_enabled": False,
+            "discord_enabled": True,
+            "discord_rate_limit_sec": 10,
+        }
+        notifier = Notifier(config=config)
 
         # First send should go through
         notifier.notify("trade", "First", "msg1")
