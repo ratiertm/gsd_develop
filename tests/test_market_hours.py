@@ -156,3 +156,103 @@ class TestTimeInjection:
         m = MarketHoursManager(mock_risk_config, time_func=time_func)
         m.get_market_state()
         assert len(called) == 1
+
+
+class TestStateTransition:
+    """Tests for state transition detection and callback system."""
+
+    def test_check_state_transition_returns_tuple_on_change(self, mock_risk_config):
+        """check_state_transition() returns (old_state, new_state) when state changes."""
+        current_time = [make_time(9, 2)]  # MARKET_OPEN_BUFFER
+
+        def time_func():
+            return current_time[0]
+
+        m = MarketHoursManager(mock_risk_config, time_func=time_func)
+        # First call initializes _previous_state
+        m.check_state_transition()
+
+        # Change time to TRADING
+        current_time[0] = make_time(9, 10)
+        result = m.check_state_transition()
+
+        assert result is not None
+        assert result == (MarketState.MARKET_OPEN_BUFFER, MarketState.TRADING)
+
+    def test_check_state_transition_returns_none_when_no_change(self, mock_risk_config):
+        """check_state_transition() returns None when state has NOT changed."""
+        m = MarketHoursManager(mock_risk_config, time_func=lambda: make_time(10, 0))
+        # First call initializes
+        m.check_state_transition()
+        # Second call with same state
+        result = m.check_state_transition()
+        assert result is None
+
+    def test_on_state_changed_callback_fires(self, mock_risk_config):
+        """on_state_changed callback fires with (old_state, new_state) on transition."""
+        current_time = [make_time(9, 2)]  # MARKET_OPEN_BUFFER
+        callback_args = []
+
+        def time_func():
+            return current_time[0]
+
+        def on_changed(old_state, new_state):
+            callback_args.append((old_state, new_state))
+
+        m = MarketHoursManager(mock_risk_config, time_func=time_func)
+        m.register_state_callback(on_changed)
+
+        # Initialize
+        m.check_state_transition()
+
+        # Transition to TRADING
+        current_time[0] = make_time(9, 10)
+        m.check_state_transition()
+
+        assert len(callback_args) == 1
+        assert callback_args[0] == (MarketState.MARKET_OPEN_BUFFER, MarketState.TRADING)
+
+    def test_buffer_to_trading_transition_detected(self, mock_risk_config):
+        """Transition from MARKET_OPEN_BUFFER to TRADING is detected (the critical reset trigger)."""
+        current_time = [make_time(9, 2)]  # MARKET_OPEN_BUFFER
+
+        def time_func():
+            return current_time[0]
+
+        m = MarketHoursManager(mock_risk_config, time_func=time_func)
+        m.check_state_transition()  # init
+
+        current_time[0] = make_time(9, 5)  # Exactly at trading_start boundary
+        result = m.check_state_transition()
+
+        assert result is not None
+        old_state, new_state = result
+        assert old_state == MarketState.MARKET_OPEN_BUFFER
+        assert new_state == MarketState.TRADING
+
+    def test_multiple_callbacks_all_fire(self, mock_risk_config):
+        """Multiple callbacks can be registered and all fire on transition."""
+        current_time = [make_time(9, 2)]
+        results_a = []
+        results_b = []
+
+        def time_func():
+            return current_time[0]
+
+        m = MarketHoursManager(mock_risk_config, time_func=time_func)
+        m.register_state_callback(lambda o, n: results_a.append((o, n)))
+        m.register_state_callback(lambda o, n: results_b.append((o, n)))
+
+        m.check_state_transition()  # init
+        current_time[0] = make_time(9, 10)  # TRADING
+        m.check_state_transition()
+
+        assert len(results_a) == 1
+        assert len(results_b) == 1
+        assert results_a[0] == results_b[0]
+
+    def test_first_call_returns_none_initializes_state(self, mock_risk_config):
+        """First call to check_state_transition sets _previous_state and returns None."""
+        m = MarketHoursManager(mock_risk_config, time_func=lambda: make_time(10, 0))
+        result = m.check_state_transition()
+        assert result is None
