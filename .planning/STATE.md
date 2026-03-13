@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-03-PLAN.md
+stopped_at: Completed 04-04-PLAN.md
 last_updated: "2026-03-13T18:21:27.294Z"
 last_activity: 2026-03-14 -- Completed 04-03 (Chart Tab)
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 15
-  completed_plans: 14
-  percent: 93
+  completed_plans: 15
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-13)
 ## Current Position
 
 Phase: 4 of 5 (Monitoring & Operations)
-Plan: 3 of 4 in current phase (04-03 complete)
+Plan: 4 of 4 in current phase (04-04 complete -- Phase 4 DONE)
 Status: In Progress
-Last activity: 2026-03-14 -- Completed 04-03 (Chart Tab)
+Last activity: 2026-03-14 -- Completed 04-04 (Strategy Tab & Wiring)
 
-Progress: [█████████░] 93% (14/15 plans)
+Progress: [██████████] 100% (15/15 plans)
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [█████████░] 93% (14/15 plans)
 | Phase 04 P01 | 3min | 2 tasks | 11 files |
 | Phase 04 P02 | 3min | 1 tasks | 2 files |
 | Phase 04 P03 | 3min | 2 tasks | 4 files |
+| Phase 04 P04 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ Recent decisions affecting current work:
 - [Phase 04]: CandlestickItem uses QPicture pre-rendering for paint performance
 - [Phase 04]: 120-candle sliding window (~2h of 1-min data) for chart memory/render efficiency
 - [Phase 04]: Sub-chart toggle: setMaximumHeight(0) hide / 100px show
+- [Phase 04]: OPERATORS defined locally in strategy_tab.py (condition_engine lacks the constant)
+- [Phase 04]: StrategyManager hot-swap clears candle_aggregator callbacks and re-registers new instance
+- [Phase 04]: order_filled bridging: get_active_orders() for dashboard, get_order() for chart trade markers
 
 ### Pending Todos
 
@@ -120,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T18:21:27.292Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-03-13T18:26:44Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None

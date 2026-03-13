@@ -31,7 +31,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **GUI-01**: 대시보드 메인 화면 — 보유종목, 주문현황, 수익률, 시스템 상태 표시
 - [x] **GUI-02**: 실시간 분봉차트 — pyqtgraph 기반 + 기술지표 오버레이
-- [ ] **GUI-03**: 전략 설정 UI — 매매 조건/파라미터를 GUI에서 설정·저장·불러오기
+- [x] **GUI-03**: 전략 설정 UI — 매매 조건/파라미터를 GUI에서 설정·저장·불러오기
 
 ### 알림/로깅
 
@@ -93,7 +93,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RISK-04 | Phase 2 | Complete |
 | GUI-01 | Phase 4 | Complete |
 | GUI-02 | Phase 4 | Complete |
-| GUI-03 | Phase 4 | Pending |
+| GUI-03 | Phase 4 | Complete |
 | NOTI-01 | Phase 4 | Complete |
 | NOTI-02 | Phase 4 | Complete |
 | NOTI-03 | Phase 4 | Complete |
