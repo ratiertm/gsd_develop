@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Order Execution & Risk Management** - Automated order lifecycle, stop-loss/trailing stop, position limits, market-hours controls
 - [x] **Phase 3: Data Pipeline & Strategy Engine** - Technical indicator calculation, composite condition engine for automated entry/exit (completed 2026-03-13)
 - [x] **Phase 4: Monitoring & Operations** - PyQt5 GUI dashboard, real-time charts, strategy config UI, notifications (completed 2026-03-13)
-- [ ] **Phase 5: Backtest & Validation** - Historical data replay, strategy simulation, performance analytics and visualization
+- [x] **Phase 5: Backtest & Validation** - Historical data replay, strategy simulation, performance analytics and visualization (completed 2026-03-14)
 
 ## Phase Details
 
@@ -98,9 +98,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — DataSource ABC, KiwoomDataSource, CostModel, BacktestEngine replay loop, config extension
-- [ ] 05-02-PLAN.md — PerformanceCalculator pure functions (TDD): total return, MDD, win rate, profit factor, Sharpe ratio
-- [ ] 05-03-PLAN.md — BacktestDialog visualization, BacktestWorker QThread, StrategyTab button wiring
+- [x] 05-01-PLAN.md — DataSource ABC, KiwoomDataSource, CostModel, BacktestEngine replay loop, config extension
+- [x] 05-02-PLAN.md — PerformanceCalculator pure functions (TDD): total return, MDD, win rate, profit factor, Sharpe ratio
+- [x] 05-03-PLAN.md — BacktestDialog visualization, BacktestWorker QThread, StrategyTab button wiring
 
 ## Progress
 
@@ -113,4 +113,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Order Execution & Risk Management | 2/4 | In Progress|  |
 | 3. Data Pipeline & Strategy Engine | 4/4 | Complete   | 2026-03-13 |
 | 4. Monitoring & Operations | 4/4 | Complete   | 2026-03-13 |
-| 5. Backtest & Validation | 1/3 | In Progress|  |
+| 5. Backtest & Validation | 3/3 | Complete   | 2026-03-14 |
