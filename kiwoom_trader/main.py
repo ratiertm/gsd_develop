@@ -383,7 +383,7 @@ def main():
                 # Build configs
                 cost_config = settings.backtest_config
                 risk_config = settings.risk_config
-                strategy_configs = settings._config.get("strategies", [])
+                strategy_configs = settings.strategy_config
 
                 # Create engine
                 engine = BacktestEngine(
