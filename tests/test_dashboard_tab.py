@@ -5,11 +5,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Ensure PyQt5 mocking is available
-sys.modules.setdefault("PyQt5", MagicMock())
-sys.modules.setdefault("PyQt5.QtCore", MagicMock())
-sys.modules.setdefault("PyQt5.QtWidgets", MagicMock())
-sys.modules.setdefault("PyQt5.QtGui", MagicMock())
+# Remove any pre-existing PyQt5 mocks so the fallback path is used
+for mod in list(sys.modules):
+    if mod.startswith("PyQt5"):
+        del sys.modules[mod]
 
 from kiwoom_trader.core.models import Order, OrderSide, OrderState, Position
 from kiwoom_trader.gui.dashboard_tab import (
