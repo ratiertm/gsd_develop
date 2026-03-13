@@ -24,7 +24,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **RISK-01**: 기본 손절/익절 — % 기반 손절매, 목표가 매도
 - [x] **RISK-02**: 트레일링 스탑 — 최고가 대비 하락폭으로 동적 손절
-- [ ] **RISK-03**: 분할 매수/매도 — 여러 번에 나눠 진입/청산
+- [x] **RISK-03**: 분할 매수/매도 — 여러 번에 나눠 진입/청산
 - [x] **RISK-04**: 포지션 제한 — 종목별 비중 한도, 총 투자 한도, 일일 손실 한도
 
 ### GUI
@@ -89,7 +89,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRAD-04 | Phase 2 | Complete |
 | RISK-01 | Phase 2 | Complete |
 | RISK-02 | Phase 2 | Complete |
-| RISK-03 | Phase 2 | Pending |
+| RISK-03 | Phase 2 | Complete |
 | RISK-04 | Phase 2 | Complete |
 | GUI-01 | Phase 4 | Pending |
 | GUI-02 | Phase 4 | Pending |

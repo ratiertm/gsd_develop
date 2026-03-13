@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-03-13T14:41:46.124Z"
-last_activity: 2026-03-13 -- Completed 02-03 (position tracker, market hours)
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-03-13T14:46:44.530Z"
+last_activity: 2026-03-13 -- Completed 02-04 (risk manager, Phase 2 wiring)
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
-  percent: 71
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-13)
 
 ## Current Position
 
-Phase: 2 of 5 (Order Execution & Risk Management)
-Plan: 3 of 4 in current phase (02-03 complete)
-Status: In Progress
-Last activity: 2026-03-13 -- Completed 02-03 (position tracker, market hours)
+Phase: 2 of 5 (Order Execution & Risk Management) -- COMPLETE
+Plan: 4 of 4 in current phase (02-04 complete)
+Status: Phase 2 Complete
+Last activity: 2026-03-13 -- Completed 02-04 (risk manager, Phase 2 wiring)
 
-Progress: [███████░░░] 71% (5/7 plans)
+Progress: [██████████] 100% (7/7 plans)
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [███████░░░] 71% (5/7 plans)
 | Phase 02 P01 | 5min | 2 tasks | 8 files |
 | Phase 02 P03 | 2min | 2 tasks | 4 files |
 | Phase 02 P02 | 4min | 2 tasks | 5 files |
+| Phase 02 P04 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Daily P&L includes realized + unrealized per RESEARCH.md Pitfall 4
 - [Phase 02]: Temporary internal order_no (ORD_XXXXXX) until exchange assigns via chejan
 - [Phase 02]: ChejanData FID parsing: strip() all values, abs(int(val or '0')) for price/qty fields
+- [Phase 02]: Sell orders bypass BUY-specific validation checks for risk reduction
+- [Phase 02]: Liquidation sorts worst positions first (ascending unrealized_pnl)
+- [Phase 02]: Split orders submit first part immediately, return splits for caller scheduling
 
 ### Pending Todos
 
@@ -91,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T14:39:31.455Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-03-13T14:46:44.517Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
