@@ -93,6 +93,12 @@ class Settings:
                 "005930": ["RSI_REVERSAL", "MA_CROSSOVER"],
                 "035720": ["RSI_REVERSAL"],
             },
+            "notification": {
+                "gui_popup_enabled": True,
+                "log_enabled": True,
+                "discord_enabled": False,
+                "discord_rate_limit_sec": 2,
+            },
             "risk": {
                 "stop_loss_pct": -2.0,
                 "take_profit_pct": 3.0,
@@ -110,6 +116,17 @@ class Settings:
                 "auction_end_pm": "15:30",
             },
         }
+
+    def save(self):
+        """Write current config to disk (JSON with indent=2)."""
+        with open(self._config_path, "w", encoding="utf-8") as f:
+            json.dump(self._config, f, indent=2, ensure_ascii=False)
+        logger.info(f"Config saved to {self._config_path}")
+
+    @property
+    def notification_config(self) -> dict:
+        """Return notification settings section."""
+        return self._config.get("notification", {})
 
     @property
     def account_password(self) -> str:
