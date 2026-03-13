@@ -79,11 +79,13 @@ Plans:
   2. Real-time candlestick chart displays live price data with selectable technical indicator overlays (MA, RSI, MACD, Bollinger Bands)
   3. Strategy parameters (entry/exit conditions, indicator settings, risk thresholds) can be created, saved, and loaded through the GUI without editing config files
   4. Trade executions and critical system events trigger GUI popup alerts, are written to rotating log files, and are sent to a configured Discord channel via webhook
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — GUI skeleton (MainWindow + tabs), ToastWidget, Notifier dispatcher, Discord webhook sender, notification config
+- [ ] 04-02-PLAN.md — DashboardTab (positions table, orders, P&L summary, system status, log panel)
+- [ ] 04-03-PLAN.md — ChartTab (CandlestickItem, indicator overlays, sub-charts, watchlist, trade markers)
+- [ ] 04-04-PLAN.md — StrategyTab (form editor, watchlist manager, CRUD), main.py Phase 4 wiring
 
 ### Phase 5: Backtest & Validation
 **Goal**: Users can test strategies against historical data before risking real capital, with realistic cost modeling and comprehensive performance metrics
@@ -109,5 +111,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. API Foundation | 3/3 | Complete    | 2026-03-12 |
 | 2. Order Execution & Risk Management | 2/4 | In Progress|  |
 | 3. Data Pipeline & Strategy Engine | 4/4 | Complete   | 2026-03-13 |
-| 4. Monitoring & Operations | 0/0 | Not started | - |
+| 4. Monitoring & Operations | 0/4 | Not started | - |
 | 5. Backtest & Validation | 0/0 | Not started | - |
