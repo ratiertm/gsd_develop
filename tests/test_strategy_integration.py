@@ -4,14 +4,17 @@ Tests the complete flow: tick -> CandleAggregator -> StrategyManager -> PaperTra
 using real component instances (no mocks except for OrderManager/RiskManager).
 """
 
+import datetime as dt
 from datetime import datetime, timedelta
 
 import pytest
 
+from kiwoom_trader.config.constants import MarketState
 from kiwoom_trader.core.candle_aggregator import CandleAggregator
 from kiwoom_trader.core.condition_engine import ConditionEngine
-from kiwoom_trader.core.indicators import RSIIndicator
-from kiwoom_trader.core.models import Candle, Signal
+from kiwoom_trader.core.indicators import RSIIndicator, VWAPIndicator
+from kiwoom_trader.core.market_hours import MarketHoursManager
+from kiwoom_trader.core.models import Candle, RiskConfig, Signal
 from kiwoom_trader.core.paper_trader import PaperTrader
 from kiwoom_trader.core.strategy_manager import StrategyManager
 
@@ -345,3 +348,104 @@ class TestCandleAggregatorStrategyManagerWiring:
         # Verify the callback was registered
         assert len(candle_aggregator._callbacks) == 1
         assert candle_aggregator._callbacks[0] == strategy_manager.on_candle_complete
+
+
+# --- VWAP strategy config for reset integration test ---
+
+VWAP_STRATEGY_CONFIG = {
+    "name": "VWAP_BOUNCE",
+    "enabled": True,
+    "priority": 15,
+    "cooldown_sec": 300,
+    "indicators": {
+        "vwap": {"type": "vwap"},
+    },
+    "entry_rule": {
+        "logic": "AND",
+        "conditions": [
+            {"indicator": "price", "operator": "lt", "value": 999999.0},
+        ],
+    },
+    "exit_rule": {
+        "logic": "AND",
+        "conditions": [
+            {"indicator": "price", "operator": "gt", "value": 999999.0},
+        ],
+    },
+}
+
+
+class TestVWAPAndCooldownResetOnTradingStart:
+    """Integration test: VWAP and cooldown reset when MarketHoursManager transitions to TRADING."""
+
+    def test_vwap_and_cooldown_reset_on_trading_start(self):
+        """Full flow: accumulate VWAP state + cooldowns, transition to TRADING, verify both reset."""
+        risk_config = RiskConfig()
+
+        # Start in MARKET_OPEN_BUFFER (09:02)
+        current_time = [dt.time(9, 2)]
+
+        def time_func():
+            return current_time[0]
+
+        market_hours = MarketHoursManager(risk_config, time_func=time_func)
+
+        # Create strategy with VWAP indicator
+        config = _make_config(
+            strategies=[VWAP_STRATEGY_CONFIG],
+            watchlist={"005930": ["VWAP_BOUNCE"]},
+        )
+        condition_engine = ConditionEngine()
+        strategy_manager = StrategyManager(
+            condition_engine=condition_engine,
+            risk_manager=None,
+            order_manager=None,
+            config=config,
+        )
+        paper_trader = PaperTrader(csv_path="/dev/null", initial_capital=10_000_000)
+        strategy_manager.paper_trader = paper_trader
+
+        # Wire the state callback (same as main.py does)
+        def _on_market_state_changed(old_state, new_state):
+            if new_state == MarketState.TRADING:
+                strategy_manager.reset_vwap()
+                strategy_manager.reset_daily()
+
+        market_hours.register_state_callback(_on_market_state_changed)
+
+        # Feed candles to accumulate VWAP state and cooldown entries
+        code = "005930"
+        base_ts = datetime(2026, 3, 14, 9, 2, 0)
+        for i in range(5):
+            candle = _make_candle(code, 50000 + i * 100, volume=1000, ts=base_ts + timedelta(minutes=i))
+            strategy_manager.on_candle_complete(code, candle)
+
+        # Verify VWAP has accumulated state
+        key = (code, "VWAP_BOUNCE")
+        indicators = strategy_manager._indicators.get(key, {})
+        vwap_instance = indicators.get("vwap")
+        assert vwap_instance is not None, "VWAP indicator should be initialized"
+        assert vwap_instance._cum_vol > 0, "VWAP should have accumulated volume"
+        assert vwap_instance._cum_pv > 0, "VWAP should have accumulated price*volume"
+
+        # Add a cooldown entry
+        strategy_manager._cooldowns[("005930", "BUY")] = base_ts
+        assert len(strategy_manager._cooldowns) > 0
+
+        # Initialize state tracking (first poll)
+        market_hours.check_state_transition()
+
+        # Transition to TRADING (09:05)
+        current_time[0] = dt.time(9, 5)
+        result = market_hours.check_state_transition()
+
+        # Verify transition detected
+        assert result is not None
+        assert result == (MarketState.MARKET_OPEN_BUFFER, MarketState.TRADING)
+
+        # Verify VWAP reset: cumulative values should be 0
+        assert vwap_instance._cum_pv == 0.0, "VWAP cum_pv should be reset"
+        assert vwap_instance._cum_vol == 0, "VWAP cum_vol should be reset"
+
+        # Verify cooldowns reset: dict should be empty
+        assert len(strategy_manager._cooldowns) == 0, "Cooldowns should be cleared"

@@ -22,6 +22,7 @@ from kiwoom_trader.utils.logger import setup_logging
 
 # Phase 2 imports (may fail on macOS dev without PyQt5)
 try:
+    from kiwoom_trader.config.constants import MarketState
     from kiwoom_trader.core import (
         MarketHoursManager,
         OrderManager,
@@ -181,17 +182,26 @@ def main():
         # Direct 2-arg match: callback(code, candle) -> on_candle_complete(code, candle)
         candle_aggregator.register_callback(strategy_manager.on_candle_complete)
 
-        # Wire VWAP daily reset: when MarketHoursManager transitions to TRADING state
-        # MarketHoursManager.get_market_state() is polled; reset_vwap is called
-        # alongside daily resets at trading start
+        # Wire daily resets via MarketHoursManager state transition detection
         if market_hours is not None:
-            # VWAP reset is triggered at the start of each trading day
-            # alongside other daily resets (cooldown, position P&L, etc.)
-            pass
+            def _on_market_state_changed(old_state, new_state):
+                """Reset VWAP and cooldowns when trading day starts."""
+                if new_state == MarketState.TRADING:
+                    strategy_manager.reset_vwap()
+                    strategy_manager.reset_daily()
+                    logger.info(
+                        f"Trading day started ({old_state.value} -> {new_state.value}): "
+                        "VWAP and cooldowns reset"
+                    )
 
-        # Wire daily reset: strategy cooldowns reset alongside existing daily resets
-        # strategy_manager.reset_daily() should be called when new trading day starts
-        # strategy_manager.reset_vwap() should be called on TRADING state transition
+            market_hours.register_state_callback(_on_market_state_changed)
+
+            # Poll market state transitions every 10 seconds
+            from PyQt5.QtCore import QTimer
+
+            market_state_timer = QTimer()
+            market_state_timer.timeout.connect(market_hours.check_state_transition)
+            market_state_timer.start(10_000)
 
         logger.info(
             f"Phase 3 components wired: CandleAggregator, ConditionEngine, "
