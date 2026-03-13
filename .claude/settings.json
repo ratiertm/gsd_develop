@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/python3 -m pytest tests/test_cost_model.py tests/test_data_source.py tests/test_backtest_engine.py -v)",
+      "Bash(.venv/bin/python3 -m pytest tests/test_cost_model.py tests/test_data_source.py tests/test_backtest_engine.py tests/test_performance.py -v)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(.venv/bin/python3 -m pytest tests/ -x -q)",
+      "Bash(node \"$HOME/.claude/get-shit-done/bin/gsd-tools.cjs\" roadmap set-phase-status \"5\" \"complete\")"
+    ]
+  }
+}

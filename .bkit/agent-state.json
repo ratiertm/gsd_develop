@@ -1,35 +1,14 @@
 {
   "version": "1.0",
-  "enabled": true,
+  "enabled": false,
   "teamName": "",
-  "feature": "",
-  "pdcaPhase": "plan",
+  "feature": "tests",
+  "pdcaPhase": "do",
   "orchestrationPattern": "leader",
   "ctoAgent": "opus",
-  "startedAt": "2026-03-12T16:55:30.474Z",
-  "lastUpdated": "2026-03-12T17:02:10.490Z",
-  "teammates": [
-    {
-      "name": "a4d8ecab0d289ade7",
-      "role": "gsd-phase-researcher",
-      "model": "sonnet",
-      "status": "completed",
-      "currentTask": null,
-      "taskId": null,
-      "startedAt": "2026-03-12T16:55:30.474Z",
-      "lastActivityAt": "2026-03-12T17:01:14.147Z"
-    },
-    {
-      "name": "aac377f5722b000a5",
-      "role": "gsd-planner",
-      "model": "sonnet",
-      "status": "spawning",
-      "currentTask": null,
-      "taskId": null,
-      "startedAt": "2026-03-12T17:02:10.489Z",
-      "lastActivityAt": "2026-03-12T17:02:10.489Z"
-    }
-  ],
+  "startedAt": "2026-03-13T20:02:25.651Z",
+  "lastUpdated": "2026-03-13T22:29:58.085Z",
+  "teammates": [],
   "progress": {
     "totalTasks": 0,
     "completedTasks": 0,

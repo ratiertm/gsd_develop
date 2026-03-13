@@ -1,0 +1,243 @@
+{
+  "timestamp": "2026-03-12T21:44:08.133Z",
+  "reason": "compaction",
+  "status": {
+    "version": "2.0",
+    "lastUpdated": "2026-03-12T20:46:22.340Z",
+    "activeFeatures": [
+      "tests",
+      "kiwoom_trader",
+      "config",
+      "api"
+    ],
+    "primaryFeature": "tests",
+    "features": {
+      "tests": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-12T20:31:26.689Z",
+          "lastUpdated": "2026-03-12T20:44:10.604Z"
+        },
+        "lastFile": "/Users/leeeunmi/Projects/study/GSD_develop/tests/test_real_data.py"
+      },
+      "kiwoom_trader": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-12T20:31:27.832Z",
+          "lastUpdated": "2026-03-12T20:46:04.983Z"
+        },
+        "lastFile": "/Users/leeeunmi/Projects/study/GSD_develop/kiwoom_trader/main.py"
+      },
+      "config": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-12T20:31:28.972Z",
+          "lastUpdated": "2026-03-12T20:32:49.281Z"
+        },
+        "lastFile": "/Users/leeeunmi/Projects/study/GSD_develop/kiwoom_trader/config/constants.py"
+      },
+      "api": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-12T20:31:30.118Z",
+          "lastUpdated": "2026-03-12T20:46:22.340Z"
+        },
+        "lastFile": "/Users/leeeunmi/Projects/study/GSD_develop/kiwoom_trader/api/__init__.py"
+      }
+    },
+    "pipeline": {
+      "currentPhase": 1,
+      "level": "Dynamic",
+      "phaseHistory": []
+    },
+    "session": {
+      "startedAt": "2026-03-12T15:15:50.426Z",
+      "onboardingCompleted": false,
+      "lastActivity": "2026-03-12T20:46:22.340Z"
+    },
+    "history": [
+      {
+        "timestamp": "2026-03-12T20:31:26.689Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:31:27.832Z",
+        "feature": "kiwoom_trader",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:31:28.972Z",
+        "feature": "config",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:31:30.118Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:31:31.266Z",
+        "feature": "kiwoom_trader",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:31:59.029Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:32:39.856Z",
+        "feature": "config",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:32:49.281Z",
+        "feature": "config",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:32:57.025Z",
+        "feature": "kiwoom_trader",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:33:41.094Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:33:44.363Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:33:47.452Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:33:49.461Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:33:52.028Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:38:18.063Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:38:53.390Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:39:21.397Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:39:56.479Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:40:24.941Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:40:41.787Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:43:56.739Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:44:10.604Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:45:04.481Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:45:21.745Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:46:04.983Z",
+        "feature": "kiwoom_trader",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:46:07.253Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-12T20:46:22.340Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      }
+    ]
+  }
+}
