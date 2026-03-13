@@ -31,6 +31,10 @@ class MarketHoursManager:
         self._risk_config = risk_config
         self._time_func = time_func or (lambda: datetime.now().time())
 
+        # State transition tracking
+        self._previous_state: MarketState | None = None
+        self._state_callbacks: list[Callable[[MarketState, MarketState], None]] = []
+
         # Parse time strings from RiskConfig into datetime.time objects
         self._auction_start_am = self._parse_time(risk_config.auction_start_am)
         self._auction_end_am = self._parse_time(risk_config.auction_end_am)
@@ -82,3 +86,41 @@ class MarketHoursManager:
     def is_closing_time(self) -> bool:
         """True during CLOSING state (15:15-15:20) -- liquidation only."""
         return self.get_market_state() == MarketState.CLOSING
+
+    def register_state_callback(
+        self, callback: Callable[[MarketState, MarketState], None]
+    ) -> None:
+        """Register a callback to fire on state transitions.
+
+        Args:
+            callback: Called with (old_state, new_state) when market state changes.
+        """
+        self._state_callbacks.append(callback)
+
+    def check_state_transition(self) -> tuple[MarketState, MarketState] | None:
+        """Check for market state change and fire callbacks if detected.
+
+        Designed to be called periodically (e.g., from a QTimer).
+
+        Returns:
+            (old_state, new_state) tuple if a transition occurred, None otherwise.
+            First call always returns None (initializes previous state).
+        """
+        current = self.get_market_state()
+
+        if self._previous_state is None:
+            # First call: initialize, no transition
+            self._previous_state = current
+            return None
+
+        if current == self._previous_state:
+            return None
+
+        old_state = self._previous_state
+        self._previous_state = current
+
+        # Fire all registered callbacks
+        for callback in self._state_callbacks:
+            callback(old_state, current)
+
+        return (old_state, current)
