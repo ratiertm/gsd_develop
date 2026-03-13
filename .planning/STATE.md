@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-13T18:16:12.397Z"
-last_activity: 2026-03-14 -- Completed 04-01 (GUI skeleton + notification system)
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-03-13T18:21:27.294Z"
+last_activity: 2026-03-14 -- Completed 04-03 (Chart Tab)
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 15
-  completed_plans: 12
-  percent: 80
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-13)
 ## Current Position
 
 Phase: 4 of 5 (Monitoring & Operations)
-Plan: 1 of 4 in current phase (04-01 complete)
+Plan: 3 of 4 in current phase (04-03 complete)
 Status: In Progress
-Last activity: 2026-03-14 -- Completed 04-01 (GUI skeleton + notification system)
+Last activity: 2026-03-14 -- Completed 04-03 (Chart Tab)
 
-Progress: [████████░░] 80% (12/15 plans)
+Progress: [█████████░] 93% (14/15 plans)
 
 ## Performance Metrics
 
@@ -61,6 +61,8 @@ Progress: [████████░░] 80% (12/15 plans)
 | Phase 03 P03 | 5min | 2 tasks | 5 files |
 | Phase 03 P04 | 3min | 2 tasks | 4 files |
 | Phase 04 P01 | 3min | 2 tasks | 11 files |
+| Phase 04 P02 | 3min | 1 tasks | 2 files |
+| Phase 04 P03 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -101,6 +103,11 @@ Recent decisions affecting current work:
 - [Phase 04]: DiscordSendWorker uses threading.Thread for cross-platform compatibility
 - [Phase 04]: Toast stacking tracks active toasts with Y-offset repositioning on dismiss
 - [Phase 04]: Notification fire-and-forget: all sends wrapped in try/except, never propagate
+- [Phase 04]: Derived current_price from avg_price + unrealized_pnl/qty since Position model lacks current_price field
+- [Phase 04]: Pure function pnl_color() extracted for testability -- Korean convention red=up, blue=down
+- [Phase 04]: CandlestickItem uses QPicture pre-rendering for paint performance
+- [Phase 04]: 120-candle sliding window (~2h of 1-min data) for chart memory/render efficiency
+- [Phase 04]: Sub-chart toggle: setMaximumHeight(0) hide / 100px show
 
 ### Pending Todos
 
@@ -113,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T18:16:12.394Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-13T18:21:27.292Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
