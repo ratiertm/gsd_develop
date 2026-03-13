@@ -62,11 +62,12 @@ Plans:
   1. SMA, EMA, RSI, MACD, and Bollinger Bands compute correctly on live streaming data using incremental calculation (not full recomputation per tick)
   2. The condition engine evaluates composite rules (indicator thresholds + price/volume conditions) and emits entry/exit signals that flow through the Risk Manager to the Order Manager
   3. A complete automated trading loop runs in paper trading: data reception -> indicator calculation -> condition evaluation -> risk validation -> order execution -> fill confirmation
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — Candle dataclass, CandleAggregator (tick-to-OHLCV), 7 incremental technical indicators (SMA, EMA, RSI, MACD, Bollinger, VWAP, OBV)
+- [ ] 03-02-PLAN.md — ConditionEngine (AND/OR rules), StrategyManager (presets, priority, cooldown), PaperTrader (virtual execution, CSV logging)
+- [ ] 03-03-PLAN.md — Config extension, core exports, main.py wiring, end-to-end integration test
 
 ### Phase 4: Monitoring & Operations
 **Goal**: Users can observe and control the running system through a full GUI dashboard with real-time charts, configure strategies without code changes, and receive notifications on key events
@@ -106,6 +107,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. API Foundation | 3/3 | Complete    | 2026-03-12 |
 | 2. Order Execution & Risk Management | 2/4 | In Progress|  |
-| 3. Data Pipeline & Strategy Engine | 0/0 | Not started | - |
+| 3. Data Pipeline & Strategy Engine | 0/3 | Not started | - |
 | 4. Monitoring & Operations | 0/0 | Not started | - |
 | 5. Backtest & Validation | 0/0 | Not started | - |
