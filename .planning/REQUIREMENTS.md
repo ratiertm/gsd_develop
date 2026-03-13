@@ -16,7 +16,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### 매매 엔진
 
 - [x] **TRAD-01**: 기술적 지표 계산 — 이동평균(SMA/EMA), RSI, MACD, 볼린저밴드
-- [ ] **TRAD-02**: 복합 매매 조건 엔진 — 기술지표 + 가격/거래량 조합 조건 평가
+- [x] **TRAD-02**: 복합 매매 조건 엔진 — 기술지표 + 가격/거래량 조합 조건 평가
 - [x] **TRAD-03**: 자동 주문 실행 — 시장가/지정가 매수·매도, 주문 상태 머신(접수→체결→완료)
 - [x] **TRAD-04**: 매매 시간대 관리 — 장 시작/종료 시간, 동시호가 제외, 사용자 구간 설정
 
@@ -84,7 +84,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONN-02 | Phase 1 | Complete |
 | CONN-03 | Phase 1 | Complete |
 | TRAD-01 | Phase 3 | Complete |
-| TRAD-02 | Phase 3 | Pending |
+| TRAD-02 | Phase 3 | Complete |
 | TRAD-03 | Phase 2 | Complete |
 | TRAD-04 | Phase 2 | Complete |
 | RISK-01 | Phase 2 | Complete |
