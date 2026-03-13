@@ -194,19 +194,22 @@ class StrategyManager:
             # Get or create indicator instances
             indicators = self._init_indicators(strategy, code)
 
-            # Update all indicators and build context
+            # Update ALL indicators first (so none miss candle data during warmup)
+            current_values: dict[str, float | None] = {}
+            for ind_name, instance in indicators.items():
+                current_values[ind_name] = self._update_indicator(ind_name, instance, candle)
+
+            # Check if any indicator is still warming up
+            if any(v is None for v in current_values.values()):
+                continue  # Warmup not complete
+
+            # Build context with current and previous values
             context: dict[str, float] = {
                 "price": float(candle.close),
                 "volume": float(candle.volume),
             }
-            any_none = False
 
-            for ind_name, instance in indicators.items():
-                current = self._update_indicator(ind_name, instance, candle)
-                if current is None:
-                    any_none = True
-                    break
-
+            for ind_name, current in current_values.items():
                 prev_key = (code, strat_name, ind_name)
                 prev = self._prev_values.get(prev_key)
 
@@ -216,9 +219,6 @@ class StrategyManager:
 
                 # Store current as next iteration's prev
                 self._prev_values[prev_key] = current
-
-            if any_none:
-                continue  # Warmup not complete
 
             # For MA_CROSSOVER: transform EMA values to difference for cross detection
             if "ema_short" in context and "ema_long" in context:
