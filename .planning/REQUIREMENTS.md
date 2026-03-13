@@ -35,9 +35,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### 알림/로깅
 
-- [ ] **NOTI-01**: GUI 팝업 알림 — 매매 체결, 조건 충족 신호 발생 시 팝업
-- [ ] **NOTI-02**: 로그 파일 기록 — 매매 내역, 오류, 시스템 상태를 파일로 저장
-- [ ] **NOTI-03**: Discord 웹훅 알림 — 매매 체결/주요 이벤트 Discord 전송
+- [x] **NOTI-01**: GUI 팝업 알림 — 매매 체결, 조건 충족 신호 발생 시 팝업
+- [x] **NOTI-02**: 로그 파일 기록 — 매매 내역, 오류, 시스템 상태를 파일로 저장
+- [x] **NOTI-03**: Discord 웹훅 알림 — 매매 체결/주요 이벤트 Discord 전송
 
 ### 백테스트
 
@@ -94,9 +94,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GUI-01 | Phase 4 | Pending |
 | GUI-02 | Phase 4 | Pending |
 | GUI-03 | Phase 4 | Pending |
-| NOTI-01 | Phase 4 | Pending |
-| NOTI-02 | Phase 4 | Pending |
-| NOTI-03 | Phase 4 | Pending |
+| NOTI-01 | Phase 4 | Complete |
+| NOTI-02 | Phase 4 | Complete |
+| NOTI-03 | Phase 4 | Complete |
 | BACK-01 | Phase 5 | Pending |
 | BACK-02 | Phase 5 | Pending |
 | BACK-03 | Phase 5 | Pending |
