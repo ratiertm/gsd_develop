@@ -57,6 +57,21 @@ try:
 except (ImportError, TypeError):
     _HAS_GUI = False
 
+# Phase 5 imports: Backtest (may fail without PyQt5)
+try:
+    from kiwoom_trader.backtest import (
+        BacktestEngine,
+        BacktestWorker,
+        CostConfig,
+        KiwoomDataSource,
+    )
+    from kiwoom_trader.backtest.performance import compute_all_metrics
+    from kiwoom_trader.gui.backtest_dialog import BacktestDialog
+
+    _HAS_BACKTEST = True
+except (ImportError, TypeError):
+    _HAS_BACKTEST = False
+
 
 def main():
     """Initialize all components, wire event routing, and start Qt event loop."""
@@ -358,6 +373,80 @@ def main():
         # --- Wire Notifier to strategy/risk signals ---
         # (Strategy signals are routed through StrategyManager._execute_signal,
         #  risk events through RiskManager. Notifier receives via order_filled above.)
+
+        # === Phase 5: Backtest Wiring ===
+        if _HAS_BACKTEST and _HAS_STRATEGY:
+            from PyQt5.QtWidgets import QProgressDialog, QMessageBox
+
+            def _on_backtest_requested(code, start_date, end_date, capital):
+                """Handle backtest request from StrategyTab."""
+                # Build configs
+                cost_config = settings.backtest_config
+                risk_config = settings.risk_config
+                strategy_configs = settings._config.get("strategies", [])
+
+                # Create engine
+                engine = BacktestEngine(
+                    strategy_configs=strategy_configs,
+                    risk_config=risk_config,
+                    cost_config=cost_config,
+                    initial_capital=capital,
+                )
+
+                # Create data source
+                data_source = KiwoomDataSource(api, tr_queue)
+
+                # Create worker
+                worker = BacktestWorker(
+                    data_source=data_source,
+                    engine=engine,
+                    code=code,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+
+                # Progress dialog
+                progress_dlg = QProgressDialog(
+                    "Starting backtest...", "Cancel", 0, 100, main_window
+                )
+                progress_dlg.setWindowTitle("Backtest Running")
+                progress_dlg.setMinimumDuration(0)
+
+                def _on_progress(current, total, phase_name):
+                    if total > 0:
+                        progress_dlg.setMaximum(total)
+                        progress_dlg.setValue(current)
+                    progress_dlg.setLabelText(f"{phase_name}... ({current}/{total})")
+
+                def _on_finished(result):
+                    progress_dlg.close()
+                    candles = getattr(result, "_candles", [])
+                    dlg = BacktestDialog(result, candles, parent=main_window)
+                    dlg.exec_()
+
+                def _on_error(msg):
+                    progress_dlg.close()
+                    QMessageBox.warning(
+                        main_window, "Backtest Error", f"Backtest failed:\n{msg}"
+                    )
+
+                worker.progress.connect(_on_progress)
+                worker.finished.connect(_on_finished)
+                worker.error.connect(_on_error)
+                progress_dlg.canceled.connect(worker.terminate)
+
+                # Store ref to prevent GC
+                main_window._backtest_worker = worker
+                worker.start()
+
+            # Wire callback to StrategyTab
+            strategy_tab._on_backtest_requested = _on_backtest_requested
+            logger.info("Phase 5 backtest wiring complete")
+        else:
+            logger.warning(
+                "Phase 5 backtest imports unavailable. "
+                "Skipping backtest wiring."
+            )
 
         logger.info(
             "Phase 4 components wired: MainWindow, DashboardTab, ChartTab, "

@@ -7,6 +7,7 @@ Provides:
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Callable
 
 from kiwoom_trader.core.strategy_manager import INDICATOR_CLASSES
@@ -15,10 +16,13 @@ from kiwoom_trader.core.strategy_manager import INDICATOR_CLASSES
 OPERATORS = {"gt", "lt", "gte", "lte", "cross_above", "cross_below"}
 
 try:
-    from PyQt5.QtCore import Qt
+    from PyQt5.QtCore import QDate, Qt
     from PyQt5.QtWidgets import (
         QCheckBox,
         QComboBox,
+        QDateEdit,
+        QDialog,
+        QDialogButtonBox,
         QDoubleSpinBox,
         QFormLayout,
         QGroupBox,
@@ -265,11 +269,13 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
         self,
         settings: Settings,
         on_strategy_reload: Callable | None = None,
+        on_backtest_requested: Callable | None = None,
     ) -> None:
         if _HAS_PYQT5:
             super().__init__()
         self._settings = settings
         self._on_strategy_reload = on_strategy_reload
+        self._on_backtest_requested = on_backtest_requested
         self._current_strategy_index: int = -1
 
         # GUI state for indicator/condition rows
@@ -372,10 +378,16 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
         exit_group.setLayout(exit_layout)
         right_layout.addWidget(exit_group)
 
-        # Save button
+        # Save and Backtest buttons
+        save_bt_layout = QHBoxLayout()
         btn_save = QPushButton("Save Strategy")
         btn_save.clicked.connect(self._on_save)
-        right_layout.addWidget(btn_save)
+        save_bt_layout.addWidget(btn_save)
+
+        btn_backtest = QPushButton("Backtest")
+        btn_backtest.clicked.connect(self._on_backtest_clicked)
+        save_bt_layout.addWidget(btn_backtest)
+        right_layout.addLayout(save_bt_layout)
 
         top_splitter.addWidget(right_panel)
         top_splitter.setStretchFactor(0, 3)
@@ -723,3 +735,59 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
                 watchlist_remove_code(self._settings._config, code_item.text())
                 self._settings.save()
                 self._load_watchlist()
+
+    # ------------------------------------------------------------------ #
+    # Backtest
+    # ------------------------------------------------------------------ #
+
+    def _on_backtest_clicked(self) -> None:
+        """Open backtest input dialog and trigger callback."""
+        if not _HAS_PYQT5:
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Backtest Settings")
+        dialog.setMinimumWidth(350)
+        layout = QFormLayout(dialog)
+
+        code_edit = QLineEdit()
+        code_edit.setPlaceholderText("e.g. 005930")
+        layout.addRow("Stock Code:", code_edit)
+
+        today = date.today()
+        start_edit = QDateEdit()
+        start_edit.setCalendarPopup(True)
+        start_edit.setDate(QDate(today.year, today.month, today.day) .addMonths(-3))
+        layout.addRow("Start Date:", start_edit)
+
+        end_edit = QDateEdit()
+        end_edit.setCalendarPopup(True)
+        end_edit.setDate(QDate(today.year, today.month, today.day))
+        layout.addRow("End Date:", end_edit)
+
+        bt_cfg = self._settings._config.get("backtest", {})
+        capital_spin = QSpinBox()
+        capital_spin.setRange(1_000_000, 100_000_000)
+        capital_spin.setSingleStep(1_000_000)
+        capital_spin.setValue(bt_cfg.get("initial_capital", 10_000_000))
+        capital_spin.setSuffix(" KRW")
+        layout.addRow("Initial Capital:", capital_spin)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addRow(buttons)
+
+        if dialog.exec_() == QDialog.Accepted:
+            code = code_edit.text().strip()
+            if not code:
+                QMessageBox.warning(self, "Input Error", "Stock code is required.")
+                return
+            start_qdate = start_edit.date()
+            end_qdate = end_edit.date()
+            start_dt = date(start_qdate.year(), start_qdate.month(), start_qdate.day())
+            end_dt = date(end_qdate.year(), end_qdate.month(), end_qdate.day())
+            capital = capital_spin.value()
+
+            if self._on_backtest_requested:
+                self._on_backtest_requested(code, start_dt, end_dt, capital)
