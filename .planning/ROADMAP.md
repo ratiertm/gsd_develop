@@ -95,11 +95,12 @@ Plans:
   1. The backtest engine replays historical OHLCV data through the same Strategy Engine and Risk Manager used in live trading, via the abstract DataSource interface
   2. Performance statistics (total return, MDD, win rate, profit factor, Sharpe ratio) are computed and displayed after each backtest run
   3. Backtest results are visualized with equity curves, drawdown charts, and trade markers on price charts
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md — DataSource ABC, KiwoomDataSource, CostModel, BacktestEngine replay loop, config extension
+- [ ] 05-02-PLAN.md — PerformanceCalculator pure functions (TDD): total return, MDD, win rate, profit factor, Sharpe ratio
+- [ ] 05-03-PLAN.md — BacktestDialog visualization, BacktestWorker QThread, StrategyTab button wiring
 
 ## Progress
 
@@ -112,4 +113,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Order Execution & Risk Management | 2/4 | In Progress|  |
 | 3. Data Pipeline & Strategy Engine | 4/4 | Complete   | 2026-03-13 |
 | 4. Monitoring & Operations | 4/4 | Complete   | 2026-03-13 |
-| 5. Backtest & Validation | 0/0 | Not started | - |
+| 5. Backtest & Validation | 0/3 | Not started | - |
