@@ -42,6 +42,57 @@ class Settings:
             },
             "watchlist": [],
             "log_dir": "logs",
+            "mode": "paper",
+            "candle_interval_minutes": 1,
+            "strategies": [
+                {
+                    "name": "RSI_REVERSAL",
+                    "enabled": True,
+                    "priority": 10,
+                    "cooldown_sec": 300,
+                    "indicators": {
+                        "rsi": {"type": "rsi", "period": 14},
+                    },
+                    "entry_rule": {
+                        "logic": "AND",
+                        "conditions": [
+                            {"indicator": "rsi", "operator": "lt", "value": 30},
+                        ],
+                    },
+                    "exit_rule": {
+                        "logic": "AND",
+                        "conditions": [
+                            {"indicator": "rsi", "operator": "gt", "value": 70},
+                        ],
+                    },
+                },
+                {
+                    "name": "MA_CROSSOVER",
+                    "enabled": True,
+                    "priority": 20,
+                    "cooldown_sec": 300,
+                    "indicators": {
+                        "ema_short": {"type": "ema", "period": 5},
+                        "ema_long": {"type": "ema", "period": 20},
+                    },
+                    "entry_rule": {
+                        "logic": "AND",
+                        "conditions": [
+                            {"indicator": "ema_short", "operator": "cross_above", "value": 0},
+                        ],
+                    },
+                    "exit_rule": {
+                        "logic": "AND",
+                        "conditions": [
+                            {"indicator": "ema_short", "operator": "cross_below", "value": 0},
+                        ],
+                    },
+                },
+            ],
+            "watchlist_strategies": {
+                "005930": ["RSI_REVERSAL", "MA_CROSSOVER"],
+                "035720": ["RSI_REVERSAL"],
+            },
             "risk": {
                 "stop_loss_pct": -2.0,
                 "take_profit_pct": 3.0,
@@ -71,6 +122,17 @@ class Settings:
     @property
     def account_no(self) -> str:
         return os.getenv("KIWOOM_ACCOUNT_NO", "")
+
+    @property
+    def strategy_config(self) -> dict:
+        """Return strategy-related config section."""
+        return {
+            "mode": self._config.get("mode", "paper"),
+            "candle_interval_minutes": self._config.get("candle_interval_minutes", 1),
+            "strategies": self._config.get("strategies", []),
+            "watchlist_strategies": self._config.get("watchlist_strategies", {}),
+            "total_capital": self._config.get("total_capital", 10_000_000),
+        }
 
     @property
     def risk_config(self) -> RiskConfig:

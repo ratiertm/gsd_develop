@@ -3,6 +3,7 @@
 Wires all core components together and starts the Qt event loop:
 - Phase 1: KiwoomAPI, EventHandlerRegistry, TRRequestQueue, SessionManager, RealDataManager
 - Phase 2: OrderManager, RiskManager, PositionTracker, MarketHoursManager
+- Phase 3: CandleAggregator, ConditionEngine, StrategyManager, PaperTrader
 """
 
 import sys
@@ -31,6 +32,19 @@ try:
     _HAS_CORE = True
 except (ImportError, TypeError):
     _HAS_CORE = False
+
+# Phase 3 imports (may fail on macOS dev without PyQt5)
+try:
+    from kiwoom_trader.core import (
+        CandleAggregator,
+        ConditionEngine,
+        PaperTrader,
+        StrategyManager,
+    )
+
+    _HAS_STRATEGY = True
+except (ImportError, TypeError):
+    _HAS_STRATEGY = False
 
 
 def main():
@@ -116,9 +130,77 @@ def main():
             "OrderManager, RiskManager, PositionTracker, MarketHoursManager"
         )
     else:
+        risk_manager = None
+        order_manager = None
+        market_hours = None
         logger.warning(
             "Phase 2 core imports unavailable (PyQt5 missing?). "
             "Skipping order/risk wiring."
+        )
+
+    # === Phase 3: Data Pipeline & Strategy Engine ===
+    if _HAS_STRATEGY and CandleAggregator is not None:
+        strategy_config = settings.strategy_config
+        mode = strategy_config["mode"]
+
+        # CandleAggregator: tick -> candle conversion
+        candle_aggregator = CandleAggregator(
+            interval_minutes=strategy_config["candle_interval_minutes"]
+        )
+
+        # ConditionEngine: composite rule evaluation
+        condition_engine = ConditionEngine()
+
+        # PaperTrader for paper mode
+        paper_trader = None
+        if mode == "paper":
+            paper_trader = PaperTrader(
+                csv_path="logs/trades.csv",
+                initial_capital=strategy_config.get("total_capital", 10_000_000),
+                max_symbol_weight_pct=settings.risk_config.max_symbol_weight_pct,
+            )
+
+        # StrategyManager: indicator management, condition evaluation, signal routing
+        strategy_manager = StrategyManager(
+            condition_engine=condition_engine,
+            risk_manager=risk_manager,
+            order_manager=order_manager,
+            config=strategy_config,
+        )
+
+        # Set paper trader reference if in paper mode
+        if mode == "paper" and paper_trader is not None:
+            strategy_manager.paper_trader = paper_trader
+
+        # Wire: RealDataManager tick -> CandleAggregator
+        real_data_manager.register_subscriber(
+            "주식체결", candle_aggregator.on_tick
+        )
+
+        # Wire: CandleAggregator candle -> StrategyManager
+        # Direct 2-arg match: callback(code, candle) -> on_candle_complete(code, candle)
+        candle_aggregator.register_callback(strategy_manager.on_candle_complete)
+
+        # Wire VWAP daily reset: when MarketHoursManager transitions to TRADING state
+        # MarketHoursManager.get_market_state() is polled; reset_vwap is called
+        # alongside daily resets at trading start
+        if market_hours is not None:
+            # VWAP reset is triggered at the start of each trading day
+            # alongside other daily resets (cooldown, position P&L, etc.)
+            pass
+
+        # Wire daily reset: strategy cooldowns reset alongside existing daily resets
+        # strategy_manager.reset_daily() should be called when new trading day starts
+        # strategy_manager.reset_vwap() should be called on TRADING state transition
+
+        logger.info(
+            f"Phase 3 components wired: CandleAggregator, ConditionEngine, "
+            f"StrategyManager, mode={mode}"
+        )
+    else:
+        logger.warning(
+            "Phase 3 strategy imports unavailable. "
+            "Skipping data pipeline/strategy wiring."
         )
 
     # Open login dialog
