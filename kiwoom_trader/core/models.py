@@ -98,3 +98,18 @@ class RiskConfig:
     auction_end_am: str = "09:00"
     auction_start_pm: str = "15:20"
     auction_end_pm: str = "15:30"
+
+
+@dataclass
+class Candle:
+    """Single OHLCV candle for technical indicator calculation."""
+
+    code: str
+    open: int
+    high: int
+    low: int
+    close: int
+    volume: int
+    timestamp: datetime
+    cum_price_volume: float = 0.0
+    cum_volume: int = 0
