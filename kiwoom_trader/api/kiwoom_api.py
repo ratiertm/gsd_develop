@@ -23,6 +23,7 @@ class KiwoomAPI(QObject):
         str, str, str, str, str, int, str, str, str
     )  # screen_no, rq_name, tr_code, record_name, prev_next, data_len, err_code, msg1, msg2
     real_data_received = pyqtSignal(str, str, str)  # code, real_type, real_data
+    chejan_data_received = pyqtSignal(str, int, str)  # gubun, item_cnt, fid_list
 
     def __init__(self):
         super().__init__()
@@ -35,6 +36,7 @@ class KiwoomAPI(QObject):
         self.ocx.OnEventConnect.connect(self._on_event_connect)
         self.ocx.OnReceiveTrData.connect(self._on_receive_tr_data)
         self.ocx.OnReceiveRealData.connect(self._on_receive_real_data)
+        self.ocx.OnReceiveChejanData.connect(self._on_receive_chejan_data)
         logger.debug("OCX events connected")
 
     # --- Login ---
@@ -81,6 +83,49 @@ class KiwoomAPI(QObject):
             index,
             item_name,
         )
+        return ret.strip()
+
+    # --- Order ---
+
+    def send_order(
+        self,
+        rq_name: str,
+        screen_no: str,
+        account_no: str,
+        order_type: int,
+        code: str,
+        qty: int,
+        price: int,
+        hoga_gb: str,
+        org_order_no: str,
+    ) -> int:
+        """Submit an order via SendOrder. Returns 0 on acceptance, negative on error."""
+        logger.info(
+            f"SendOrder({rq_name}, {screen_no}, {account_no}, "
+            f"order_type={order_type}, code={code}, qty={qty}, "
+            f"price={price}, hoga_gb={hoga_gb}, org_order_no={org_order_no})"
+        )
+        ret = self.ocx.dynamicCall(
+            "SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
+            rq_name,
+            screen_no,
+            account_no,
+            order_type,
+            code,
+            qty,
+            price,
+            hoga_gb,
+            org_order_no,
+        )
+        if ret != 0:
+            logger.error(f"SendOrder failed: ret={ret}")
+        else:
+            logger.info(f"SendOrder accepted: ret={ret}")
+        return ret
+
+    def get_chejan_data(self, fid: int) -> str:
+        """Get chejan (order/execution) data for a FID. Returns stripped string."""
+        ret = self.ocx.dynamicCall("GetChejanData(int)", fid)
         return ret.strip()
 
     # --- Real-time ---
@@ -162,3 +207,10 @@ class KiwoomAPI(QObject):
         """Handle OnReceiveRealData COM event."""
         logger.debug(f"OnReceiveRealData: code={code}, real_type={real_type}")
         self.real_data_received.emit(code, real_type, real_data)
+
+    def _on_receive_chejan_data(self, gubun, item_cnt, fid_list):
+        """Handle OnReceiveChejanData COM event."""
+        logger.debug(
+            f"OnReceiveChejanData: gubun={gubun}, item_cnt={item_cnt}"
+        )
+        self.chejan_data_received.emit(str(gubun), int(item_cnt), str(fid_list))

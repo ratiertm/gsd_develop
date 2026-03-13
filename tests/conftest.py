@@ -39,6 +39,11 @@ def mock_kiwoom_api():
     mock_api.get_comm_real_data = MagicMock(return_value="")
     mock_api.set_real_remove = MagicMock()
 
+    # Order/Chejan API methods (added in 02-02)
+    mock_api.send_order = MagicMock(return_value=0)
+    mock_api.get_chejan_data = MagicMock(return_value="")
+    mock_api.chejan_data_received = MagicMock()
+
     return mock_api
 
 

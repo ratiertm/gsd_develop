@@ -1,7 +1,8 @@
-"""Event routing registry for TR responses and real-time market data.
+"""Event routing registry for TR responses, real-time market data, and chejan events.
 
-Routes OnReceiveTrData by rq_name and OnReceiveRealData by real_type
-to registered callback functions. Standalone module with no COM dependencies.
+Routes OnReceiveTrData by rq_name, OnReceiveRealData by real_type,
+and OnReceiveChejanData to registered callback functions.
+Standalone module with no COM dependencies.
 """
 
 from typing import Callable, Dict
@@ -14,11 +15,13 @@ class EventHandlerRegistry:
 
     TR handlers: one callback per rq_name (last registration wins).
     Real handlers: multiple callbacks per real_type (observer pattern).
+    Chejan handlers: multiple callbacks (observer pattern).
     """
 
     def __init__(self):
         self._tr_handlers: Dict[str, Callable] = {}
         self._real_handlers: Dict[str, list[Callable]] = {}
+        self._chejan_handlers: list[Callable] = []
 
     def register_tr_handler(self, rq_name: str, handler: Callable):
         """Register a callback for a specific TR request name.
@@ -55,3 +58,20 @@ class EventHandlerRegistry:
         handlers = self._real_handlers.get(real_type, [])
         for handler in handlers:
             handler(code, data)
+
+    def register_chejan_handler(self, handler: Callable):
+        """Register a callback for chejan (order/execution/balance) events.
+
+        Multiple handlers can be registered (observer pattern).
+        """
+        self._chejan_handlers.append(handler)
+        logger.debug("Chejan handler registered")
+
+    def handle_chejan_data(self, gubun: str, item_cnt: int, fid_list: str):
+        """Dispatch chejan data to all registered handlers.
+
+        Called when OnReceiveChejanData fires. Routes to all registered
+        chejan handlers with (gubun, item_cnt, fid_list).
+        """
+        for handler in self._chejan_handlers:
+            handler(gubun, item_cnt, fid_list)
