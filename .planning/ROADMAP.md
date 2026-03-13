@@ -105,7 +105,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. API Foundation | 3/3 | Complete    | 2026-03-12 |
-| 2. Order Execution & Risk Management | 0/4 | Not started | - |
+| 2. Order Execution & Risk Management | 2/4 | In Progress|  |
 | 3. Data Pipeline & Strategy Engine | 0/0 | Not started | - |
 | 4. Monitoring & Operations | 0/0 | Not started | - |
 | 5. Backtest & Validation | 0/0 | Not started | - |
