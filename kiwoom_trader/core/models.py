@@ -179,3 +179,27 @@ class TradeRecord:
     pnl_pct: float
     balance: int
     reason: str
+
+
+@dataclass
+class BacktestResult:
+    """Complete backtest output -- consumed by PerformanceCalculator and BacktestDialog.
+
+    Contains trade history, equity curve, capital info, and pre-computed metrics.
+    Metric fields default to 0.0 and are filled by PerformanceCalculator.
+    """
+
+    trades: list[TradeRecord]
+    equity_curve: list[tuple[datetime, float]]
+    initial_capital: int
+    final_capital: float
+    # Pre-computed metrics (filled by PerformanceCalculator)
+    total_return_pct: float = 0.0
+    max_drawdown_pct: float = 0.0
+    win_rate_pct: float = 0.0
+    profit_factor: float = 0.0
+    sharpe_ratio: float = 0.0
+    total_trades: int = 0
+    avg_pnl: float = 0.0
+    max_consecutive_losses: int = 0
+    avg_holding_periods: float = 0.0

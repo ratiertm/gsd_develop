@@ -7,6 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from loguru import logger
 
+from kiwoom_trader.backtest.cost_model import CostConfig
 from kiwoom_trader.core.models import RiskConfig
 
 
@@ -99,6 +100,13 @@ class Settings:
                 "discord_enabled": False,
                 "discord_rate_limit_sec": 2,
             },
+            "backtest": {
+                "buy_commission_pct": 0.015,
+                "sell_commission_pct": 0.015,
+                "tax_pct": 0.18,
+                "slippage_bp": 5.0,
+                "initial_capital": 10000000,
+            },
             "risk": {
                 "stop_loss_pct": -2.0,
                 "take_profit_pct": 3.0,
@@ -150,6 +158,22 @@ class Settings:
             "watchlist_strategies": self._config.get("watchlist_strategies", {}),
             "total_capital": self._config.get("total_capital", 10_000_000),
         }
+
+    @property
+    def backtest_config(self) -> CostConfig:
+        """Return CostConfig populated from config.json backtest section."""
+        bt = self._config.get("backtest", {})
+        return CostConfig(
+            buy_commission_pct=bt.get("buy_commission_pct", 0.015),
+            sell_commission_pct=bt.get("sell_commission_pct", 0.015),
+            tax_pct=bt.get("tax_pct", 0.18),
+            slippage_bp=bt.get("slippage_bp", 5.0),
+        )
+
+    @property
+    def backtest_initial_capital(self) -> int:
+        """Return initial capital for backtest from config."""
+        return self._config.get("backtest", {}).get("initial_capital", 10_000_000)
 
     @property
     def risk_config(self) -> RiskConfig:
