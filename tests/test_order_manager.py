@@ -18,7 +18,14 @@ from kiwoom_trader.core.order_manager import OrderManager
 @pytest.fixture
 def order_manager(mock_kiwoom_api):
     """Create OrderManager with mock API and test account."""
-    return OrderManager(mock_kiwoom_api, account_no="1234567890")
+    om = OrderManager(mock_kiwoom_api, account_no="1234567890")
+    # Reset class-level MagicMock signals so each test starts fresh
+    om.order_submitted = MagicMock()
+    om.order_filled = MagicMock()
+    om.order_rejected = MagicMock()
+    om.order_cancelled = MagicMock()
+    om.position_updated = MagicMock()
+    return om
 
 
 def _setup_chejan_data(mock_api, fid_map: dict):
