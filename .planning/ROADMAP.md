@@ -46,11 +46,13 @@ Plans:
   3. Trailing stop dynamically adjusts the stop level as price moves favorably, locking in gains
   4. Position sizing enforces per-symbol weight limits, total capital limits, and daily loss caps -- orders exceeding limits are rejected before submission
   5. Trading is restricted to configured market hours; orders outside allowed time windows (including auction periods) are blocked
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — Data models (Order, Position, RiskConfig), constants (CHEJAN_FID, OrderType, MarketState), config.json risk section
+- [ ] 02-02-PLAN.md — OrderManager state machine, KiwoomAPI SendOrder/ChejanData extension, EventHandler chejan routing
+- [ ] 02-03-PLAN.md — PositionTracker (holdings, P&L, position limits), MarketHoursManager (time-based trading control)
+- [ ] 02-04-PLAN.md — RiskManager (pre-trade validation, stop-loss/take-profit/trailing-stop triggers, split orders, daily loss enforcement), main.py wiring
 
 ### Phase 3: Data Pipeline & Strategy Engine
 **Goal**: Technical indicators feed a condition engine that automatically generates buy/sell signals, completing the end-to-end automated trading loop
@@ -102,8 +104,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. API Foundation | 1/3 | Complete    | 2026-03-12 |
-| 2. Order Execution & Risk Management | 0/0 | Not started | - |
+| 1. API Foundation | 3/3 | Complete    | 2026-03-12 |
+| 2. Order Execution & Risk Management | 0/4 | Not started | - |
 | 3. Data Pipeline & Strategy Engine | 0/0 | Not started | - |
 | 4. Monitoring & Operations | 0/0 | Not started | - |
 | 5. Backtest & Validation | 0/0 | Not started | - |
