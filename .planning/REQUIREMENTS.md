@@ -42,7 +42,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### 백테스트
 
 - [ ] **BACK-01**: 전략 시뮬레이션 엔진 — 과거 데이터로 전략 실행, DataSource 추상화로 실전과 코드 공유
-- [ ] **BACK-02**: 성과 분석 — 수익률, MDD, 승률, 손익비, 샤프비율 등 통계
+- [x] **BACK-02**: 성과 분석 — 수익률, MDD, 승률, 손익비, 샤프비율 등 통계
 - [ ] **BACK-03**: 결과 시각화 — 백테스트 결과 차트/그래프 (수익곡선, 드로다운 등)
 
 ## v2 Requirements
@@ -98,7 +98,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NOTI-02 | Phase 4 | Complete |
 | NOTI-03 | Phase 4 | Complete |
 | BACK-01 | Phase 5 | Pending |
-| BACK-02 | Phase 5 | Pending |
+| BACK-02 | Phase 5 | Complete |
 | BACK-03 | Phase 5 | Pending |
 
 **Coverage:**
