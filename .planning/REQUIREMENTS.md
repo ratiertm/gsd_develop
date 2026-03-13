@@ -17,15 +17,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **TRAD-01**: 기술적 지표 계산 — 이동평균(SMA/EMA), RSI, MACD, 볼린저밴드
 - [ ] **TRAD-02**: 복합 매매 조건 엔진 — 기술지표 + 가격/거래량 조합 조건 평가
-- [ ] **TRAD-03**: 자동 주문 실행 — 시장가/지정가 매수·매도, 주문 상태 머신(접수→체결→완료)
-- [ ] **TRAD-04**: 매매 시간대 관리 — 장 시작/종료 시간, 동시호가 제외, 사용자 구간 설정
+- [x] **TRAD-03**: 자동 주문 실행 — 시장가/지정가 매수·매도, 주문 상태 머신(접수→체결→완료)
+- [x] **TRAD-04**: 매매 시간대 관리 — 장 시작/종료 시간, 동시호가 제외, 사용자 구간 설정
 
 ### 리스크 관리
 
-- [ ] **RISK-01**: 기본 손절/익절 — % 기반 손절매, 목표가 매도
-- [ ] **RISK-02**: 트레일링 스탑 — 최고가 대비 하락폭으로 동적 손절
+- [x] **RISK-01**: 기본 손절/익절 — % 기반 손절매, 목표가 매도
+- [x] **RISK-02**: 트레일링 스탑 — 최고가 대비 하락폭으로 동적 손절
 - [ ] **RISK-03**: 분할 매수/매도 — 여러 번에 나눠 진입/청산
-- [ ] **RISK-04**: 포지션 제한 — 종목별 비중 한도, 총 투자 한도, 일일 손실 한도
+- [x] **RISK-04**: 포지션 제한 — 종목별 비중 한도, 총 투자 한도, 일일 손실 한도
 
 ### GUI
 
@@ -85,12 +85,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONN-03 | Phase 1 | Complete |
 | TRAD-01 | Phase 3 | Pending |
 | TRAD-02 | Phase 3 | Pending |
-| TRAD-03 | Phase 2 | Pending |
-| TRAD-04 | Phase 2 | Pending |
-| RISK-01 | Phase 2 | Pending |
-| RISK-02 | Phase 2 | Pending |
+| TRAD-03 | Phase 2 | Complete |
+| TRAD-04 | Phase 2 | Complete |
+| RISK-01 | Phase 2 | Complete |
+| RISK-02 | Phase 2 | Complete |
 | RISK-03 | Phase 2 | Pending |
-| RISK-04 | Phase 2 | Pending |
+| RISK-04 | Phase 2 | Complete |
 | GUI-01 | Phase 4 | Pending |
 | GUI-02 | Phase 4 | Pending |
 | GUI-03 | Phase 4 | Pending |
