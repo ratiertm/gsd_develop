@@ -1,8 +1,11 @@
 """Core data models for order execution and risk management."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
+from typing import Union
 
 
 class OrderState(Enum):
@@ -113,3 +116,66 @@ class Candle:
     timestamp: datetime
     cum_price_volume: float = 0.0
     cum_volume: int = 0
+
+
+@dataclass
+class Condition:
+    """Single condition comparing an indicator value against a threshold."""
+
+    indicator: str  # e.g. "rsi", "ema_short"
+    operator: str  # "gt", "lt", "gte", "lte", "cross_above", "cross_below"
+    value: float  # threshold value
+
+
+@dataclass
+class CompositeRule:
+    """Composite rule combining conditions with AND/OR logic.
+
+    Conditions can be Condition instances or nested CompositeRule instances.
+    """
+
+    logic: str  # "AND" or "OR"
+    conditions: list[Union[Condition, CompositeRule]]
+
+
+@dataclass
+class Signal:
+    """Trading signal emitted by a strategy."""
+
+    code: str
+    side: str  # "BUY" or "SELL"
+    strategy_name: str
+    priority: int
+    price: int
+    timestamp: datetime
+    reason: str
+
+
+@dataclass
+class StrategyConfig:
+    """Configuration for a single trading strategy."""
+
+    name: str
+    enabled: bool
+    priority: int
+    entry_rule: CompositeRule
+    exit_rule: CompositeRule
+    indicators: dict  # indicator configs: {"rsi": {"type": "rsi", "period": 14}, ...}
+    cooldown_sec: int = 300
+
+
+@dataclass
+class TradeRecord:
+    """Record of a single trade (paper or live)."""
+
+    timestamp: datetime
+    code: str
+    side: str
+    strategy: str
+    price: int
+    qty: int
+    amount: int
+    pnl: int
+    pnl_pct: float
+    balance: int
+    reason: str
