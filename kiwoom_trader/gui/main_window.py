@@ -1,4 +1,8 @@
-"""MainWindow with QTabWidget skeleton (3 tabs) and toast notification support."""
+"""MainWindow with real tabs (Dashboard, Chart, Strategy) and toast notification support."""
+
+from __future__ import annotations
+
+from typing import Callable, TYPE_CHECKING
 
 from PyQt5.QtWidgets import (
     QMainWindow,
@@ -10,20 +14,45 @@ from PyQt5.QtWidgets import (
 
 from kiwoom_trader.config.settings import Settings
 
+# Import real tab widgets with fallback to placeholders
+try:
+    from kiwoom_trader.gui.dashboard_tab import DashboardTab
+except ImportError:
+    DashboardTab = None
+
+try:
+    from kiwoom_trader.gui.chart_tab import ChartTab
+except ImportError:
+    ChartTab = None
+
+try:
+    from kiwoom_trader.gui.strategy_tab import StrategyTab
+except ImportError:
+    StrategyTab = None
+
 
 class MainWindow(QMainWindow):
     """Primary application window with tabbed interface.
 
     Tabs:
-        - Dashboard: positions, orders, P&L, system status (Plan 02)
-        - Chart: candlestick chart with indicator overlays (Plan 03)
-        - Strategy: strategy editor, watchlist management (Plan 04)
+        - Dashboard: positions, orders, P&L, system status
+        - Chart: candlestick chart with indicator overlays
+        - Strategy: strategy editor, watchlist management
+
+    Args:
+        settings: Application Settings instance.
+        on_strategy_reload: Optional callback for StrategyManager hot-swap.
     """
 
-    def __init__(self, settings: Settings):
+    def __init__(
+        self,
+        settings: Settings,
+        on_strategy_reload: Callable | None = None,
+    ):
         super().__init__()
         self._settings = settings
         self._active_toasts: list = []
+        self._on_strategy_reload = on_strategy_reload
         self._setup_ui()
 
     def _setup_ui(self):
@@ -34,10 +63,24 @@ class MainWindow(QMainWindow):
         self._tabs = QTabWidget()
         self.setCentralWidget(self._tabs)
 
-        # Placeholder tabs -- replaced by Plans 02-04
-        self._dashboard_tab = QWidget()
-        self._chart_tab = QWidget()
-        self._strategy_tab = QWidget()
+        # Real tabs (with fallback to placeholders if import failed)
+        if DashboardTab is not None:
+            self._dashboard_tab = DashboardTab()
+        else:
+            self._dashboard_tab = QWidget()
+
+        if ChartTab is not None:
+            self._chart_tab = ChartTab(self._settings)
+        else:
+            self._chart_tab = QWidget()
+
+        if StrategyTab is not None:
+            self._strategy_tab = StrategyTab(
+                self._settings,
+                on_strategy_reload=self._on_strategy_reload,
+            )
+        else:
+            self._strategy_tab = QWidget()
 
         self._tabs.addTab(self._dashboard_tab, "Dashboard")
         self._tabs.addTab(self._chart_tab, "Chart")
