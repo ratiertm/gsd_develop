@@ -13,12 +13,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Mock PyQt5 and pyqtgraph before importing chart modules
-sys.modules.setdefault("PyQt5", MagicMock())
-sys.modules.setdefault("PyQt5.QtWidgets", MagicMock())
-sys.modules.setdefault("PyQt5.QtCore", MagicMock())
-sys.modules.setdefault("PyQt5.QtGui", MagicMock())
-sys.modules.setdefault("pyqtgraph", MagicMock())
+# Ensure PyQt5/pyqtgraph imports fail so chart_tab falls back to object base class.
+# This avoids MagicMock inheritance issues with staticmethod/class methods.
+_BLOCK_MODULES = ["PyQt5", "PyQt5.QtWidgets", "PyQt5.QtCore", "PyQt5.QtGui", "pyqtgraph"]
+_saved = {}
+for _mod in _BLOCK_MODULES:
+    _saved[_mod] = sys.modules.get(_mod)
+    sys.modules[_mod] = None  # type: ignore[assignment]  # Forces ImportError
 
 from kiwoom_trader.core.models import Candle
 
