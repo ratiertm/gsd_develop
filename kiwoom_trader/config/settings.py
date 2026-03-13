@@ -7,6 +7,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from loguru import logger
 
+from kiwoom_trader.core.models import RiskConfig
+
 
 class Settings:
     """Application settings from config.json + .env"""
@@ -40,6 +42,22 @@ class Settings:
             },
             "watchlist": [],
             "log_dir": "logs",
+            "risk": {
+                "stop_loss_pct": -2.0,
+                "take_profit_pct": 3.0,
+                "trailing_stop_pct": 1.5,
+                "max_symbol_weight_pct": 20.0,
+                "max_positions": 5,
+                "daily_loss_limit_pct": 3.0,
+                "split_count": 3,
+                "split_interval_sec": 45,
+                "trading_start": "09:05",
+                "trading_end_new_buy": "15:15",
+                "auction_start_am": "08:30",
+                "auction_end_am": "09:00",
+                "auction_start_pm": "15:20",
+                "auction_end_pm": "15:30",
+            },
         }
 
     @property
@@ -49,3 +67,13 @@ class Settings:
     @property
     def is_simulation(self) -> bool:
         return os.getenv("KIWOOM_SIMULATION", "true").lower() == "true"
+
+    @property
+    def account_no(self) -> str:
+        return os.getenv("KIWOOM_ACCOUNT_NO", "")
+
+    @property
+    def risk_config(self) -> RiskConfig:
+        """Return RiskConfig dataclass populated from config.json risk section."""
+        risk_dict = self._config.get("risk", {})
+        return RiskConfig(**risk_dict) if risk_dict else RiskConfig()

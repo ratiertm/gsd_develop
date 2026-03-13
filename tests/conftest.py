@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from kiwoom_trader.config.settings import Settings
+from kiwoom_trader.core.models import RiskConfig
 
 
 @pytest.fixture
@@ -52,6 +53,22 @@ def mock_settings():
 
 
 @pytest.fixture
+def mock_risk_config():
+    """Returns a RiskConfig with user-locked defaults."""
+    return RiskConfig()
+
+
+@pytest.fixture
+def mock_position_tracker():
+    """Mock PositionTracker with get_position, get_all_positions, update_from_chejan."""
+    tracker = MagicMock()
+    tracker.get_position.return_value = None
+    tracker.get_all_positions.return_value = {}
+    tracker.update_from_chejan = MagicMock()
+    return tracker
+
+
+@pytest.fixture
 def tmp_config_file(tmp_path):
     """Creates a temporary config.json with known values, yields path, cleans up."""
     config = {
@@ -64,6 +81,22 @@ def tmp_config_file(tmp_path):
         },
         "watchlist": ["005930", "000660"],
         "log_dir": "logs",
+        "risk": {
+            "stop_loss_pct": -2.0,
+            "take_profit_pct": 3.0,
+            "trailing_stop_pct": 1.5,
+            "max_symbol_weight_pct": 20.0,
+            "max_positions": 5,
+            "daily_loss_limit_pct": 3.0,
+            "split_count": 3,
+            "split_interval_sec": 45,
+            "trading_start": "09:05",
+            "trading_end_new_buy": "15:15",
+            "auction_start_am": "08:30",
+            "auction_end_am": "09:00",
+            "auction_start_pm": "15:20",
+            "auction_end_pm": "15:30",
+        },
     }
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps(config), encoding="utf-8")

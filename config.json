@@ -7,5 +7,21 @@
         "stock_orderbook": "41;61;62;63;64;65;66;67;68;69;71;72;73;74;75;76;77;78;79;80"
     },
     "watchlist": [],
-    "log_dir": "logs"
+    "log_dir": "logs",
+    "risk": {
+        "stop_loss_pct": -2.0,
+        "take_profit_pct": 3.0,
+        "trailing_stop_pct": 1.5,
+        "max_symbol_weight_pct": 20.0,
+        "max_positions": 5,
+        "daily_loss_limit_pct": 3.0,
+        "split_count": 3,
+        "split_interval_sec": 45,
+        "trading_start": "09:05",
+        "trading_end_new_buy": "15:15",
+        "auction_start_am": "08:30",
+        "auction_end_am": "09:00",
+        "auction_start_pm": "15:20",
+        "auction_end_pm": "15:30"
+    }
 }
