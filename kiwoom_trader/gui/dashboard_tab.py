@@ -9,6 +9,7 @@ try:
     from PyQt5.QtCore import Qt
     from PyQt5.QtGui import QColor, QFont, QTextCursor
     from PyQt5.QtWidgets import (
+        QComboBox,
         QFormLayout,
         QGroupBox,
         QHBoxLayout,
@@ -31,6 +32,7 @@ except ImportError:
     QColor = MagicMock
     QFont = MagicMock
     QTextCursor = MagicMock()
+    QComboBox = MagicMock
     QFormLayout = MagicMock
     QGroupBox = MagicMock
     QHBoxLayout = MagicMock
@@ -157,7 +159,11 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
         self._lbl_market_state = QLabel("--")
         self._lbl_strategy_count = QLabel("--")
         self._lbl_mode = QLabel("--")
+        self._cmb_account = QComboBox()
+        self._lbl_user_name = QLabel("--")
         status_form.addRow("연결 상태:", self._lbl_connected)
+        status_form.addRow("사용자:", self._lbl_user_name)
+        status_form.addRow("계좌:", self._cmb_account)
         status_form.addRow("장 상태:", self._lbl_market_state)
         status_form.addRow("활성 전략:", self._lbl_strategy_count)
         status_form.addRow("모드:", self._lbl_mode)
@@ -352,6 +358,41 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
                 self._lbl_unrealized_pnl.setStyleSheet("")
 
             self._lbl_total_invested.setText(_format_price(total_invested))
+
+    def set_accounts(
+        self,
+        accounts: list[str],
+        user_name: str = "",
+        server_label: str = "",
+    ) -> None:
+        """Populate account combo box after login.
+
+        Args:
+            accounts: List of account numbers from GetLoginInfo("ACCNO").
+            user_name: User name from GetLoginInfo("USER_NAME").
+            server_label: "모의투자" or "실거래".
+        """
+        if _HAS_PYQT5:
+            self._cmb_account.clear()
+            # Label accounts by suffix convention
+            # 모의투자: 끝자리 31=주식, 11=선물옵션
+            for acc in accounts:
+                suffix = acc[-2:] if len(acc) >= 2 else ""
+                if suffix == "31":
+                    label = f"{acc} (주식)"
+                elif suffix == "11":
+                    label = f"{acc} (선물옵션)"
+                else:
+                    label = acc
+                self._cmb_account.addItem(label, acc)
+            if user_name:
+                self._lbl_user_name.setText(f"{user_name} ({server_label})")
+
+    def get_selected_account(self) -> str:
+        """Return the currently selected account number."""
+        if _HAS_PYQT5:
+            return self._cmb_account.currentData() or ""
+        return ""
 
     def update_status(
         self,

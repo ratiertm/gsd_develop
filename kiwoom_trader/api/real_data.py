@@ -118,7 +118,20 @@ class RealDataManager:
         # Extract standard FIDs within event context
         data_dict = {}
         for fid in _STANDARD_FIDS:
-            data_dict[fid] = self._api.get_comm_real_data(code, fid)
+            raw = self._api.get_comm_real_data(code, fid)
+            data_dict[fid] = raw
+
+        # Log first data reception per code for verification
+        if not hasattr(self, "_seen_codes"):
+            self._seen_codes = set()
+        if code not in self._seen_codes:
+            self._seen_codes.add(code)
+            price = data_dict.get(FID.CURRENT_PRICE, "?")
+            vol = data_dict.get(FID.VOLUME, "?")
+            logger.info(
+                f"실시간 데이터 첫 수신: {code} | "
+                f"real_type={real_type} | 현재가={price} | 거래량={vol}"
+            )
 
         # Dispatch to subscribers
         handlers = self._subscribers.get(real_type, [])

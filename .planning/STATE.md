@@ -1,119 +1,58 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-13T19:27:38.764Z"
-last_activity: 2026-03-14 -- Completed 04-04 (Strategy Tab & Wiring)
+milestone: v2.0
+milestone_name: API 실연동
+status: active
+stopped_at: Phase 6 시작 전
+last_updated: "2026-03-14"
+last_activity: 2026-03-14 -- v2.0 로드맵 작성 완료
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 18
-  completed_plans: 16
-  percent: 100
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-13)
+See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** 설정한 전략 조건에 따라 장중 자동으로 매수/매도가 실행되고, 정교한 리스크 관리로 손실을 통제하는 것
-**Current focus:** Phase 4 - Monitoring & Operations
+**Current focus:** v2.0 API 실연동 — Phase 6 (로그인/접속) 시작 대기
 
 ## Current Position
 
-Phase: 4 of 5 (Monitoring & Operations)
-Plan: 4 of 4 in current phase (04-04 complete -- Phase 4 DONE)
-Status: In Progress
-Last activity: 2026-03-14 -- Completed 04-04 (Strategy Tab & Wiring)
+Milestone: v2.0 API 실연동
+Phase: 6 of 10 (로그인/접속)
+Status: Not Started
+Last activity: 2026-03-14 -- 로드맵 작성 완료
 
-Progress: [██████████] 100% (15/15 plans)
+Progress: [░░░░░░░░░░] 0% (0/5 phases)
 
-## Performance Metrics
+## v2.0 Approach
 
-**Velocity:**
-- Total plans completed: 3
-- Average duration: 3min
-- Total execution time: 0.17 hours
+**GSD 로드맵 + PDCA 실행 하이브리드**
+- GSD: 전체 Stage 로드맵, 게이트 조건 관리
+- PDCA: 각 Stage 내부에서 빠른 반복 (Plan → Do → Check → Act)
+- 이유: API 연동은 외부 시스템 의존, 예측 불가능한 실패, 실제 환경 검증 필수
 
-**By Phase:**
+## Environment
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1 - API Foundation | 3/3 | 10min | 3min |
-
-**Recent Trend:**
-- Last 5 plans: -
-- Trend: -
-
-*Updated after each plan completion*
-| Phase 01 P02 | 3min | 2 tasks | 5 files |
-| Phase 01 P03 | 3min | 2 tasks | 6 files |
-| Phase 02 P01 | 5min | 2 tasks | 8 files |
-| Phase 02 P03 | 2min | 2 tasks | 4 files |
-| Phase 02 P02 | 4min | 2 tasks | 5 files |
-| Phase 02 P04 | 3min | 2 tasks | 4 files |
-| Phase 03 P01 | 3min | 2 tasks | 5 files |
-| Phase 03 P02 | 5min | 2 tasks | 7 files |
-| Phase 03 P03 | 5min | 2 tasks | 5 files |
-| Phase 03 P04 | 3min | 2 tasks | 4 files |
-| Phase 04 P01 | 3min | 2 tasks | 11 files |
-| Phase 04 P02 | 3min | 1 tasks | 2 files |
-| Phase 04 P03 | 3min | 2 tasks | 4 files |
-| Phase 04 P04 | 4min | 2 tasks | 5 files |
-| Phase 05 P02 | 2min | 3 tasks | 3 files |
+- Windows + 키움 OpenAPI+ 설치됨
+- KOAStudioSA TR 테스트 가능
+- 모의투자 계정 사용
+- 인증 정보: .env 파일
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- Roadmap: 5-phase build order derived from COM/OCX dependency chain -- API foundation before orders, orders before strategy, risk co-built with orders
-- Roadmap: Phase 4 (GUI) and Phase 5 (Backtest) can run in parallel since both depend on Phase 3 but not each other
-- 01-01: Used loguru multi-sink with log_type extra field for routing to system/trade/error files
-- 01-01: Settings._default_config() as static method for reuse in test fixtures
-- 01-01: Mock fixtures use MagicMock for KiwoomAPI interface (actual class not yet implemented)
-- [Phase 01]: PyQt5 import fallback in session_manager.py enables cross-platform testing (MagicMock as QObject/QTimer)
-- [Phase 01]: EventHandlerRegistry standalone (no COM dependency) for pure Python testing
-- [Phase 01]: api/__init__.py uses try/except for KiwoomAPI import (PyQt5 fallback) so other components remain importable on non-Windows
-- [Phase 02]: OrderState uses stdlib Enum with VALID_TRANSITIONS dict for state machine (no transitions library)
-- [Phase 02]: CHEJAN_FID as plain class (not Enum) since FID values overlap between gubun contexts
-- [Phase 02]: RiskConfig defaults match user-locked parameters from CONTEXT.md; split_interval_sec=45s per RESEARCH.md recommendation
-- [Phase 02]: PositionTracker computes risk prices on add_position from RiskConfig percentages
-- [Phase 02]: MarketHoursManager uses time_func injection for deterministic testing (not datetime.now mocking)
-- [Phase 02]: Daily P&L includes realized + unrealized per RESEARCH.md Pitfall 4
-- [Phase 02]: Temporary internal order_no (ORD_XXXXXX) until exchange assigns via chejan
-- [Phase 02]: ChejanData FID parsing: strip() all values, abs(int(val or '0')) for price/qty fields
-- [Phase 02]: Sell orders bypass BUY-specific validation checks for risk reduction
-- [Phase 02]: Liquidation sorts worst positions first (ascending unrealized_pnl)
-- [Phase 02]: Split orders submit first part immediately, return splits for caller scheduling
-- [Phase 03]: Pure Python indicators with collections.deque -- no TA-Lib or pandas-ta dependency
-- [Phase 03]: EMA seeded with first value, returns None until period count reached
-- [Phase 03]: RSI div-by-zero: 100.0 for all-gains, 0.0 for all-losses
-- [Phase 03]: CandleAggregator tracks cum_price_volume/cum_volume for downstream VWAP
-- [Phase 03]: MA crossover uses EMA difference (short-long) with cross_above/cross_below on value=0 for clean cross detection
-- [Phase 03]: ConditionEngine returns False for missing indicator keys -- graceful warmup handling
-- [Phase 03]: Fixed indicator warmup: update ALL indicators before checking None to prevent data loss
-- [Phase 03]: State transition detection added to MarketHoursManager (callback pattern, not new class)
-- [Phase 03]: QTimer polls check_state_transition() every 10s for daily reset triggers
-- [Phase 03]: First check_state_transition() returns None to avoid spurious init transition
-- [Phase 04]: DiscordSendWorker uses threading.Thread for cross-platform compatibility
-- [Phase 04]: Toast stacking tracks active toasts with Y-offset repositioning on dismiss
-- [Phase 04]: Notification fire-and-forget: all sends wrapped in try/except, never propagate
-- [Phase 04]: Derived current_price from avg_price + unrealized_pnl/qty since Position model lacks current_price field
-- [Phase 04]: Pure function pnl_color() extracted for testability -- Korean convention red=up, blue=down
-- [Phase 04]: CandlestickItem uses QPicture pre-rendering for paint performance
-- [Phase 04]: 120-candle sliding window (~2h of 1-min data) for chart memory/render efficiency
-- [Phase 04]: Sub-chart toggle: setMaximumHeight(0) hide / 100px show
-- [Phase 04]: OPERATORS defined locally in strategy_tab.py (condition_engine lacks the constant)
-- [Phase 04]: StrategyManager hot-swap clears candle_aggregator callbacks and re-registers new instance
-- [Phase 04]: order_filled bridging: get_active_orders() for dashboard, get_order() for chart trade markers
-- [Phase 05]: Duck-typed compute_all_metrics for parallel plan compatibility; sample std dev (N-1) for Sharpe ratio
+- v1.0 → v2.0 전환: GSD Phase 기반에서 GSD+PDCA 하이브리드로 방법론 변경
+- Phase 번호 연속: v1.0의 Phase 5 이후 Phase 6부터 시작 (히스토리 연속성)
+- 게이트 조건 필수: 이전 Phase 게이트 통과 없이 다음 Phase 진행 불가
 
 ### Pending Todos
 
@@ -121,11 +60,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 2 may need research into Kiwoom SendOrder API details (sHogaGb codes, OnReceiveChejanData gubun values)
-- Phase 5 may need research into Kiwoom historical data API (opt10080/opt10081) limitations
+- COM 등록 상태 확인 필요 (OpenAPI+ 정상 설치 여부)
+- 모의투자 서버 운영 시간 확인 (장 마감 후 접속 가능 여부)
 
 ## Session Continuity
 
-Last session: 2026-03-13T19:27:32.103Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-03-14
+Stopped at: v2.0 로드맵 작성 완료, Phase 6 시작 전
 Resume file: None

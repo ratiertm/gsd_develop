@@ -58,6 +58,7 @@ class OrderManager(QObject if _HAS_PYQT5 else object):
         self._api = kiwoom_api
         self._account_no = account_no
         self._orders: dict[str, Order] = {}
+        self._pending_orders: dict[str, Order] = {}  # temp_id -> Order (awaiting real order_no)
         self._screen_counter = SCREEN.ORDER_BASE
         self._internal_id_counter = 0  # For orders before they get a real order_no
         logger.info(f"OrderManager initialized for account {account_no}")
@@ -108,7 +109,8 @@ class OrderManager(QObject if _HAS_PYQT5 else object):
 
         if ret == ORDER_ERROR.SUCCESS:
             self._transition_state(order, OrderState.SUBMITTED)
-            self._orders[order.order_no] = order
+            # Store in pending until chejan assigns real order_no
+            self._pending_orders[temp_order_no] = order
             self.order_submitted.emit(order.order_no)
             logger.info(
                 f"Order submitted: {order.order_no} {side.name} {code} "
@@ -179,14 +181,29 @@ class OrderManager(QObject if _HAS_PYQT5 else object):
         # Strip leading "A" from code (Kiwoom prefixes stock codes with "A")
         code = raw_code.replace("A", "")
 
-        # Look up order
+        # Look up order -- try main dict first, then resolve from pending
         order = self._orders.get(order_no)
         if order is None:
-            logger.warning(
-                f"Chejan data for untracked order: order_no={order_no}, "
-                f"code={code}, status={order_status}"
-            )
-            return
+            # Check pending orders: match by code (first pending for that code)
+            matched_temp = None
+            for temp_id, pending in self._pending_orders.items():
+                if pending.code == code:
+                    matched_temp = temp_id
+                    break
+
+            if matched_temp:
+                order = self._pending_orders.pop(matched_temp)
+                order.order_no = order_no
+                self._orders[order_no] = order
+                logger.info(
+                    f"주문번호 매핑: {matched_temp} -> {order_no} ({code})"
+                )
+            else:
+                logger.warning(
+                    f"Chejan data for untracked order: order_no={order_no}, "
+                    f"code={code}, status={order_status}"
+                )
+                return
 
         # Determine new state from order_status + execution data
         new_state = self._determine_state(order_status, unfilled_qty, exec_qty)

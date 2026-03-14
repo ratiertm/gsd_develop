@@ -1,116 +1,104 @@
 # Roadmap: KiwoomDayTrader
 
-## Overview
+## Milestone: v1.0 (Complete)
 
-KiwoomDayTrader is built bottom-up from its hardest constraint: the Kiwoom OpenAPI+ COM/OCX layer that dictates threading, event handling, and rate limits. Phase 1 establishes a stable, rate-limit-compliant API connection. Phase 2 builds order execution and risk management together (risk guards must exist before any automated order fires). Phase 3 adds indicator calculation and the strategy condition engine, completing the automated trading loop. Phase 4 delivers the full GUI dashboard and notification system for monitoring live operations. Phase 5 adds the backtest engine to validate strategies against historical data.
+v1.0은 전체 시스템의 코드 기반을 완성했다. API 래퍼, 주문/리스크 엔진, 전략 엔진, GUI, 백테스트가 모의 환경에서 검증됨.
+Phase 1~5 완료 (18/18 plans). 상세 내역은 git history 참조.
+
+---
+
+## Milestone: v2.0 — API 실연동 (Active)
+
+### Overview
+
+v1.0 코드를 실제 키움 OpenAPI+ 환경에 연결하는 마일스톤.
+신규 코드보다 **설정/디버깅/검증** 비중이 크므로, GSD로 방향을 잡고 각 Stage 내부는 **PDCA 사이클**로 빠르게 반복한다.
+
+**전략**: 단계별 게이트 — 이전 Stage 게이트를 통과해야 다음으로 진행.
+
+### Requirements
+
+- **INTG-01**: COM/OCX 실제 연결 및 로그인 (모의투자)
+- **INTG-02**: 실시간 시세 수신 검증 (SetRealReg → 체결/호가 데이터)
+- **INTG-03**: 모의투자 주문 실행 및 체결 확인
+- **INTG-04**: 잔고/포지션 실시간 동기화
+- **INTG-05**: E2E 통합 — 시세 수신 → 전략 신호 → 주문 → 체결 → 포지션 반영
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [x] **Phase 1: API Foundation** - Kiwoom OCX connectivity, event routing, TR throttling, real-time data reception (completed 2026-03-12)
-- [ ] **Phase 2: Order Execution & Risk Management** - Automated order lifecycle, stop-loss/trailing stop, position limits, market-hours controls
-- [x] **Phase 3: Data Pipeline & Strategy Engine** - Technical indicator calculation, composite condition engine for automated entry/exit (completed 2026-03-13)
-- [x] **Phase 4: Monitoring & Operations** - PyQt5 GUI dashboard, real-time charts, strategy config UI, notifications (completed 2026-03-13)
-- [x] **Phase 5: Backtest & Validation** - Historical data replay, strategy simulation, performance analytics and visualization (completed 2026-03-14)
+- [x] **Phase 6: 로그인/접속** — COM 연결, OpenAPI 로그인, 접속 상태 콜백 확인 (completed 2026-03-14)
+- [ ] **Phase 7: 실시간 시세** — SetRealReg로 종목 등록, 체결/호가 데이터 수신 검증
+- [ ] **Phase 8: 주문 실행** — 모의투자 시장가/지정가 주문, 체결 콜백(OnReceiveChejanData) 확인
+- [ ] **Phase 9: 잔고/포지션 동기화** — 잔고 조회 TR, ChejanData 잔고 업데이트, PositionTracker 매핑
+- [ ] **Phase 10: E2E 통합** — 전체 플로우 연결, GUI 연동, 모의투자 라이브 테스트
 
 ## Phase Details
 
-### Phase 1: API Foundation
-**Goal**: A stable, rate-limit-compliant Kiwoom API connection that can log in, receive real-time market data, and survive disconnections
-**Depends on**: Nothing (first phase)
-**Requirements**: CONN-01, CONN-02, CONN-03
-**Success Criteria** (what must be TRUE):
-  1. System logs into Kiwoom OpenAPI+ and maintains session; if connection drops, it reconnects automatically without user intervention
-  2. TR requests are queued and dispatched at compliant intervals (3.6s+) -- rapid-fire requests never reach the server
-  3. Real-time price, volume, and orderbook data streams into the application for registered symbols via SetRealReg events
-  4. Project structure, logging infrastructure, and configuration management are operational
-**Plans**: 3 plans
+### Phase 6: 로그인/접속
+**Goal**: 키움 OpenAPI+ COM에 실제 연결하고 모의투자 로그인이 완료되는 것
+**Depends on**: v1.0 완료
+**Requirements**: INTG-01
+**Gate Condition** (다음 Stage로 가려면):
+  1. `CommConnect()` 호출 → 로그인 다이얼로그 표시 → 로그인 성공
+  2. `OnEventConnect` 콜백에서 errCode=0 수신
+  3. `GetLoginInfo("ACCNO")` 로 계좌번호 정상 조회
+  4. `.env`에서 인증 정보 로드 동작 확인
 
-Plans:
-- [x] 01-01-PLAN.md — Project scaffolding, config, logging, constants, and test infrastructure
-- [ ] 01-02-PLAN.md — KiwoomAPI wrapper, event handler registry, and session manager
-- [ ] 01-03-PLAN.md — TR throttle queue, real-time data manager, and main.py wiring
+**PDCA 사이클 예시**:
+- P: CommConnect 호출 구현
+- D: 실행, 로그인 다이얼로그 확인
+- C: OnEventConnect 콜백 수신 여부 확인
+- A: 실패 시 COM 등록/OCX 경로 등 환경 문제 수정
 
-### Phase 2: Order Execution & Risk Management
-**Goal**: Orders execute reliably with full lifecycle tracking, and risk guards prevent uncontrolled losses before any strategy runs
-**Depends on**: Phase 1
-**Requirements**: TRAD-03, TRAD-04, RISK-01, RISK-02, RISK-03, RISK-04
-**Success Criteria** (what must be TRUE):
-  1. Market and limit orders submit correctly, and every order is tracked through its lifecycle (submitted -> accepted -> partial fill -> filled / cancelled / rejected)
-  2. Stop-loss and take-profit triggers fire automatically when price thresholds are hit, closing positions without manual intervention
-  3. Trailing stop dynamically adjusts the stop level as price moves favorably, locking in gains
-  4. Position sizing enforces per-symbol weight limits, total capital limits, and daily loss caps -- orders exceeding limits are rejected before submission
-  5. Trading is restricted to configured market hours; orders outside allowed time windows (including auction periods) are blocked
-**Plans**: 4 plans
+### Phase 7: 실시간 시세
+**Goal**: 등록한 종목의 실시간 체결/호가 데이터가 앱으로 들어오는 것
+**Depends on**: Phase 6
+**Requirements**: INTG-02
+**Gate Condition**:
+  1. `SetRealReg`로 종목 등록 성공
+  2. `OnReceiveRealData` 콜백으로 실시간 체결가/거래량 수신
+  3. 수신 데이터가 `CandleAggregator`를 통해 Candle로 변환
+  4. 10분 이상 안정적 수신 (연결 끊김 없음)
 
-Plans:
-- [ ] 02-01-PLAN.md — Data models (Order, Position, RiskConfig), constants (CHEJAN_FID, OrderType, MarketState), config.json risk section
-- [ ] 02-02-PLAN.md — OrderManager state machine, KiwoomAPI SendOrder/ChejanData extension, EventHandler chejan routing
-- [ ] 02-03-PLAN.md — PositionTracker (holdings, P&L, position limits), MarketHoursManager (time-based trading control)
-- [ ] 02-04-PLAN.md — RiskManager (pre-trade validation, stop-loss/take-profit/trailing-stop triggers, split orders, daily loss enforcement), main.py wiring
+### Phase 8: 주문 실행
+**Goal**: 모의투자에서 매수/매도 주문이 정상 체결되는 것
+**Depends on**: Phase 7
+**Requirements**: INTG-03
+**Gate Condition**:
+  1. `SendOrder` 시장가 매수 → 체결 확인
+  2. `SendOrder` 지정가 매수 → 접수/체결/미체결 확인
+  3. `OnReceiveChejanData` 콜백으로 주문 상태 변경 수신
+  4. `OrderManager` 상태 머신이 실제 체결 데이터와 동기화
 
-### Phase 3: Data Pipeline & Strategy Engine
-**Goal**: Technical indicators feed a condition engine that automatically generates buy/sell signals, completing the end-to-end automated trading loop
-**Depends on**: Phase 2
-**Requirements**: TRAD-01, TRAD-02
-**Success Criteria** (what must be TRUE):
-  1. SMA, EMA, RSI, MACD, and Bollinger Bands compute correctly on live streaming data using incremental calculation (not full recomputation per tick)
-  2. The condition engine evaluates composite rules (indicator thresholds + price/volume conditions) and emits entry/exit signals that flow through the Risk Manager to the Order Manager
-  3. A complete automated trading loop runs in paper trading: data reception -> indicator calculation -> condition evaluation -> risk validation -> order execution -> fill confirmation
-**Plans**: 4 plans
+### Phase 9: 잔고/포지션 동기화
+**Goal**: 실제 보유 잔고와 앱 내 PositionTracker가 일치하는 것
+**Depends on**: Phase 8
+**Requirements**: INTG-04
+**Gate Condition**:
+  1. 잔고 조회 TR (opw00018) 요청 → 보유 종목 목록 수신
+  2. 체결 시 ChejanData(gubun=1) 잔고 변동 실시간 반영
+  3. `PositionTracker`의 포지션과 실제 키움 잔고 일치
+  4. GUI 대시보드에 실시간 잔고 표시
 
-Plans:
-- [ ] 03-01-PLAN.md — Candle dataclass, CandleAggregator (tick-to-OHLCV), 7 incremental technical indicators (SMA, EMA, RSI, MACD, Bollinger, VWAP, OBV)
-- [ ] 03-02-PLAN.md — ConditionEngine (AND/OR rules), StrategyManager (presets, priority, cooldown), PaperTrader (virtual execution, CSV logging)
-- [ ] 03-03-PLAN.md — Config extension, core exports, main.py wiring, end-to-end integration test
-- [ ] 03-04-PLAN.md — Gap closure: Wire VWAP daily reset and cooldown daily reset via MarketHoursManager state transition detection
-
-### Phase 4: Monitoring & Operations
-**Goal**: Users can observe and control the running system through a full GUI dashboard with real-time charts, configure strategies without code changes, and receive notifications on key events
-**Depends on**: Phase 3
-**Requirements**: GUI-01, GUI-02, GUI-03, NOTI-01, NOTI-02, NOTI-03
-**Success Criteria** (what must be TRUE):
-  1. Dashboard main screen shows current positions, pending orders, realized/unrealized P&L, and system connection status in real time
-  2. Real-time candlestick chart displays live price data with selectable technical indicator overlays (MA, RSI, MACD, Bollinger Bands)
-  3. Strategy parameters (entry/exit conditions, indicator settings, risk thresholds) can be created, saved, and loaded through the GUI without editing config files
-  4. Trade executions and critical system events trigger GUI popup alerts, are written to rotating log files, and are sent to a configured Discord channel via webhook
-**Plans**: 4 plans
-
-Plans:
-- [ ] 04-01-PLAN.md — GUI skeleton (MainWindow + tabs), ToastWidget, Notifier dispatcher, Discord webhook sender, notification config
-- [ ] 04-02-PLAN.md — DashboardTab (positions table, orders, P&L summary, system status, log panel)
-- [ ] 04-03-PLAN.md — ChartTab (CandlestickItem, indicator overlays, sub-charts, watchlist, trade markers)
-- [ ] 04-04-PLAN.md — StrategyTab (form editor, watchlist manager, CRUD), main.py Phase 4 wiring
-
-### Phase 5: Backtest & Validation
-**Goal**: Users can test strategies against historical data before risking real capital, with realistic cost modeling and comprehensive performance metrics
-**Depends on**: Phase 3
-**Requirements**: BACK-01, BACK-02, BACK-03
-**Success Criteria** (what must be TRUE):
-  1. The backtest engine replays historical OHLCV data through the same Strategy Engine and Risk Manager used in live trading, via the abstract DataSource interface
-  2. Performance statistics (total return, MDD, win rate, profit factor, Sharpe ratio) are computed and displayed after each backtest run
-  3. Backtest results are visualized with equity curves, drawdown charts, and trade markers on price charts
-**Plans**: 3 plans
-
-Plans:
-- [x] 05-01-PLAN.md — DataSource ABC, KiwoomDataSource, CostModel, BacktestEngine replay loop, config extension
-- [x] 05-02-PLAN.md — PerformanceCalculator pure functions (TDD): total return, MDD, win rate, profit factor, Sharpe ratio
-- [x] 05-03-PLAN.md — BacktestDialog visualization, BacktestWorker QThread, StrategyTab button wiring
+### Phase 10: E2E 통합
+**Goal**: 시세 수신 → 전략 판단 → 주문 → 체결 → 잔고 반영까지 전체 파이프라인이 자동으로 동작
+**Depends on**: Phase 9
+**Requirements**: INTG-05
+**Gate Condition**:
+  1. 전략 조건 충족 시 자동 매수 주문 실행
+  2. 리스크 관리(손절/익절/트레일링) 실제 동작
+  3. GUI에서 전체 플로우 실시간 모니터링
+  4. 30분 이상 모의투자 라이브 러닝 안정 확인
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
+Phase 6 -> 7 -> 8 -> 9 -> 10 (순차, 게이트 통과 필수)
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. API Foundation | 3/3 | Complete    | 2026-03-12 |
-| 2. Order Execution & Risk Management | 2/4 | In Progress|  |
-| 3. Data Pipeline & Strategy Engine | 4/4 | Complete   | 2026-03-13 |
-| 4. Monitoring & Operations | 4/4 | Complete   | 2026-03-13 |
-| 5. Backtest & Validation | 3/3 | Complete   | 2026-03-14 |
+| Phase | Status | Gate Passed |
+|-------|--------|-------------|
+| 6. 로그인/접속 | Complete | 2026-03-14 |
+| 7. 실시간 시세 | Pending | - |
+| 8. 주문 실행 | Pending | - |
+| 9. 잔고/포지션 동기화 | Pending | - |
+| 10. E2E 통합 | Pending | - |

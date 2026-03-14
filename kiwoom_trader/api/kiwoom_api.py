@@ -28,8 +28,22 @@ class KiwoomAPI(QObject):
     def __init__(self):
         super().__init__()
         self.ocx = QAxWidget("KHOPENAPI.KHOpenAPICtrl.1")
+
+        # Verify OCX control loaded successfully
+        ctrl = self.ocx.control()
+        if not ctrl:
+            logger.error(
+                "OCX control failed to load. "
+                "Check: 1) OpenAPI+ installed? 2) 32-bit Python? 3) Run as admin?"
+            )
+            raise RuntimeError(
+                "KHOPENAPI.KHOpenAPICtrl.1 로드 실패. "
+                "OpenAPI+ 설치 여부, 32비트 Python 여부를 확인하세요."
+            )
+        logger.info(f"OCX control loaded: {ctrl}")
+
         self._connect_events()
-        logger.info("KiwoomAPI initialized with KHOPENAPI.KHOpenAPICtrl.1")
+        logger.info("KiwoomAPI initialized")
 
     def _connect_events(self):
         """Connect OCX COM events to internal signal emitters."""
@@ -51,6 +65,23 @@ class KiwoomAPI(QObject):
         state = self.ocx.dynamicCall("GetConnectState()")
         logger.debug(f"GetConnectState() -> {state}")
         return state
+
+    # --- Login Info ---
+
+    def get_login_info(self, tag: str) -> str:
+        """Get login information after successful connection.
+
+        Args:
+            tag: One of "ACCNO", "USER_ID", "USER_NAME", "KEY_BSECGB"
+                 (0: 모의투자, 1: 실거래), "FIESSION_COUNT", etc.
+
+        Returns:
+            Requested info as stripped string.
+        """
+        ret = self.ocx.dynamicCall("GetLoginInfo(QString)", tag)
+        result = ret.strip() if ret else ""
+        logger.debug(f"GetLoginInfo({tag}) -> {result}")
+        return result
 
     # --- TR Request ---
 

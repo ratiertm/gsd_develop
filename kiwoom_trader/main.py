@@ -7,6 +7,7 @@ Wires all core components together and starts the Qt event loop:
 - Phase 4: MainWindow (Dashboard, Chart, Strategy tabs), Notifier, signal wiring
 """
 
+import os
 import sys
 
 from loguru import logger
@@ -288,7 +289,7 @@ def main():
 
             def _update_dashboard():
                 """Poll position/P&L data and push to dashboard."""
-                positions = position_tracker.positions
+                positions = position_tracker.get_all_positions()
                 total_invested = sum(
                     p.avg_price * p.qty for p in positions.values()
                 )
@@ -457,6 +458,79 @@ def main():
             "Phase 4 GUI imports unavailable. "
             "Skipping monitoring/operations wiring."
         )
+
+    # === Phase 6: Login & Connection ===
+    def _select_account(account_no: str):
+        """Update the active account across all components."""
+        os.environ["KIWOOM_ACCOUNT_NO"] = account_no
+        if order_manager is not None:
+            order_manager._account_no = account_no
+        logger.info(f"활성 계좌 변경: {account_no}")
+
+    def _on_login_success(err_code):
+        """Handle login result: log account info and start monitoring."""
+        if err_code != 0:
+            logger.error(f"Login failed (err_code={err_code})")
+            return
+
+        # Query account info from API
+        accounts = api.get_login_info("ACCNO")
+        user_id = api.get_login_info("USER_ID")
+        user_name = api.get_login_info("USER_NAME")
+        server_type = api.get_login_info("GetServerGubun")
+
+        server_label = "모의투자" if server_type == "1" else "실거래"
+        account_list = [a for a in accounts.split(";") if a.strip()]
+
+        logger.info(f"=== 로그인 성공 ===")
+        logger.info(f"사용자: {user_name} ({user_id})")
+        logger.info(f"서버: {server_label}")
+        logger.info(f"계좌: {account_list}")
+
+        # Auto-select first stock account (suffix 31) or first available
+        selected = account_list[0] if account_list else ""
+        for acc in account_list:
+            if acc.endswith("31"):
+                selected = acc
+                break
+        _select_account(selected)
+
+        # Populate dashboard account selector
+        if _HAS_GUI and hasattr(dashboard, "set_accounts"):
+            dashboard.set_accounts(account_list, user_name, server_label)
+            # Wire account change from combo box
+            dashboard._cmb_account.currentIndexChanged.connect(
+                lambda _: _select_account(dashboard.get_selected_account())
+            )
+
+        # Update status bar
+        if _HAS_GUI and main_window is not None:
+            main_window._status_bar.showMessage(
+                f"{user_name} | {server_label} | {selected}"
+            )
+
+        # === Phase 7: Register watchlist for real-time data ===
+        watchlist = settings._config.get("watchlist", [])
+        # Also gather codes from watchlist_strategies mapping
+        ws_codes = list(settings._config.get("watchlist_strategies", {}).keys())
+        all_codes = list(dict.fromkeys(watchlist + ws_codes))  # dedupe, preserve order
+
+        if all_codes:
+            fid_config = settings._config.get("real_data_fids", {})
+            stock_fids = fid_config.get(
+                "stock_execution",
+                "10;11;12;13;15;16;17;18;20;25;27;28",
+            )
+            code_str = ";".join(all_codes)
+            real_data_manager.subscribe(code_str, stock_fids)
+            logger.info(f"실시간 시세 등록: {all_codes}")
+        else:
+            logger.warning("watchlist가 비어있어 실시간 시세 등록 건너뜀")
+
+        # Start session monitoring
+        session_manager.start_monitoring()
+
+    api.connected.connect(_on_login_success)
 
     # Open login dialog
     api.comm_connect()

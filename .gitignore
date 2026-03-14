@@ -1,0 +1,25 @@
+# Environment variables (credentials)
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Test
+.pytest_cache/
+htmlcov/
+.coverage

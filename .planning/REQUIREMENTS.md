@@ -45,7 +45,19 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **BACK-02**: 성과 분석 — 수익률, MDD, 승률, 손익비, 샤프비율 등 통계
 - [ ] **BACK-03**: 결과 시각화 — 백테스트 결과 차트/그래프 (수익곡선, 드로다운 등)
 
-## v2 Requirements
+## v2.0 Requirements — API 실연동
+
+v1.0 코드를 실제 키움 OpenAPI+ 환경에 연결. 신규 코드보다 설정/디버깅/검증 비중이 큼.
+
+### API 연동
+
+- [ ] **INTG-01**: COM/OCX 실제 연결 및 로그인 (모의투자)
+- [ ] **INTG-02**: 실시간 시세 수신 검증 (SetRealReg → 체결/호가 데이터)
+- [ ] **INTG-03**: 모의투자 주문 실행 및 체결 확인
+- [ ] **INTG-04**: 잔고/포지션 실시간 동기화
+- [ ] **INTG-05**: E2E 통합 — 시세 수신 → 전략 신호 → 주문 → 체결 → 포지션 반영
+
+## Future Requirements (v3+)
 
 ### 고급 전략
 
@@ -100,12 +112,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BACK-01 | Phase 5 | Pending |
 | BACK-02 | Phase 5 | Complete |
 | BACK-03 | Phase 5 | Pending |
+| INTG-01 | Phase 6 | Pending |
+| INTG-02 | Phase 7 | Pending |
+| INTG-03 | Phase 8 | Pending |
+| INTG-04 | Phase 9 | Pending |
+| INTG-05 | Phase 10 | Pending |
 
 **Coverage:**
-- v1 requirements: 20 total
-- Mapped to phases: 20
+- v1 requirements: 20 total (mapped: 20)
+- v2.0 requirements: 5 total (mapped: 5)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-13*
-*Last updated: 2026-03-13 after roadmap creation*
+*Last updated: 2026-03-14 — v2.0 INTG requirements added*

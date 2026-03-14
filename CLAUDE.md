@@ -4,50 +4,59 @@
 
 ## Quick Reference
 
-- **Language**: Python 3.10+
+- **Language**: Python 3.10 (32-bit 필수 — 키움 OpenAPI+ COM 제약)
 - **GUI**: PyQt5
 - **Chart**: pyqtgraph
 - **Logging**: loguru
 - **Test**: pytest
-- **Platform**: Windows (키움 OpenAPI+ COM 기반). macOS에서 개발 가능하나 GUI/API 실행 불가.
+- **Platform**: Windows 전용 (키움 OpenAPI+ COM 기반)
+
+## Runtime Environment
+
+- **32-bit Python**: `C:\Users\Mindbuild\Python310-32\python.exe`
+- **가상환경**: `.venv32/` (32-bit, PyQt5/loguru/pyqtgraph/python-dotenv)
+- **인증 정보**: `.env` 파일 (커밋 금지, `.gitignore`에 등록됨)
+- **설정**: `config.json` (watchlist, 전략, 리스크 파라미터)
 
 ## Project Structure
 
 ```
 kiwoom_trader/
   api/              # Phase 1: 키움 API 연동 (OCX, 이벤트, TR 큐, 세션)
-  config/           # 설정 (constants, settings - config.json 관리)
+  config/           # 설정 (constants, settings - config.json + .env)
   core/             # Phase 2-3: 매매 엔진 (주문, 리스크, 인디케이터, 전략, 포지션)
   gui/              # Phase 4: PyQt5 GUI (대시보드, 차트, 전략탭, 알림)
     widgets/        # 재사용 위젯 (캔들스틱, 인디케이터 차트, 토스트)
     notification/   # 알림 시스템 (Notifier, Discord 웹훅)
   backtest/         # Phase 5: 백테스트 (DataSource, 비용모델, 엔진, 성과분석, QThread)
   utils/            # 로깅 설정
-  main.py           # 진입점 - 모든 컴포넌트 와이어링
-tests/              # pytest 테스트 (369+ tests)
+  main.py           # 진입점 - 모든 컴포넌트 와이어링 (Phase 1~6)
+tests/              # pytest 테스트
+  test_live_simulation.py  # Phase 7~8 샘플 데이터 E2E 시뮬레이션 (13건)
+  test_live_order.py       # Phase 8 모의투자 주문 테스트 (장중 실행용)
 .planning/          # GSD 워크플로우 (로드맵, 요구사항, 페이즈별 계획/검증)
 ```
 
 ## Commands
 
 ```bash
-# 테스트 실행
-python -m pytest tests/ -x -q
+# 앱 실행 (32-bit Python 필수)
+.venv32\Scripts\python.exe -m kiwoom_trader.main
 
-# 전체 테스트 (verbose)
-python -m pytest tests/ -v
+# 테스트 실행 (32-bit)
+.venv32\Scripts\python.exe -m pytest tests/test_live_simulation.py -v
 
-# 앱 실행 (Windows + 키움 OpenAPI 필요)
-python -m kiwoom_trader.main
+# 테스트 실행 (64-bit — COM 불필요한 단위 테스트)
+python -m pytest tests/ -x -q --ignore=tests/test_live_order.py
 ```
 
 ## Architecture Patterns
 
 - **PyQt5 try/except fallback**: 모든 Qt import는 `try/except ImportError`로 감싸서 macOS에서도 import 가능. `_HAS_PYQT5` 플래그로 분기.
-- **Config-driven**: 모든 파라미터는 `config.json`으로 관리. `Settings` 클래스가 읽기/쓰기 담당.
+- **Config-driven**: 모든 파라미터는 `config.json`으로 관리. `Settings` 클래스가 읽기/쓰기 담당. 인증 정보는 `.env`.
 - **Observer pattern**: callback 등록 방식 (RealDataManager, CandleAggregator, MarketHoursManager).
-- **TDD**: RED-GREEN-REFACTOR 패턴. 테스트 먼저 작성.
-- **Phase-based wiring**: `main.py`에서 Phase 1~5 순서로 컴포넌트 생성 및 시그널 연결.
+- **Phase-based wiring**: `main.py`에서 Phase 1~6 순서로 컴포넌트 생성 및 시그널 연결.
+- **GSD + PDCA 하이브리드**: v2.0부터 GSD 로드맵 + PDCA 실행 방식. 각 Phase에 Gate Condition 필수.
 
 ## Key Conventions
 
@@ -57,19 +66,35 @@ python -m kiwoom_trader.main
 - `Signal` dataclass가 매매 신호의 표준 형식
 - 리스크 파라미터는 `RiskConfig` dataclass로 통합 관리
 - 백테스트 비용: 매수 수수료 + 매도 수수료 + 거래세 0.18%(매도) + 슬리페이지
+- chejan = 체결/잔고. `OnReceiveChejanData`의 gubun=0은 체결, gubun=1은 잔고
+- 주문번호 매핑: submit_order()는 임시번호(ORD_*), chejan에서 실제 거래소 번호로 전환
 
-## Phase Status (v1.0)
+## Phase Status
+
+### v1.0 (Complete)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | API Foundation (OCX, 이벤트, TR 큐, 실시간) | Complete |
-| 2 | Order Execution & Risk Management | 2/4 plans |
+| 2 | Order Execution & Risk Management | Complete |
 | 3 | Data Pipeline & Strategy Engine | Complete |
 | 4 | Monitoring & Operations (GUI) | Complete |
 | 5 | Backtest & Validation | Complete |
 
+### v2.0 — API 실연동 (Active)
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 6 | 로그인/접속 + 계좌 관리 | Complete |
+| 7 | 실시간 시세 (SetRealReg) | 코드 준비 완료, 장중 Gate 검증 필요 |
+| 8 | 주문 실행 (모의투자) | 코드 준비 완료, 장중 Gate 검증 필요 |
+| 9 | 잔고/포지션 동기화 | 대기 |
+| 10 | E2E 통합 | 대기 |
+
 ## Testing Notes
 
+- 32-bit venv(`.venv32`)로 실행해야 COM 관련 테스트 통과
+- `test_live_simulation.py`: 샘플 데이터 E2E (13건, COM 불필요)
+- `test_live_order.py`: 장중 모의투자 실주문 테스트 (수동 실행)
 - PyQt5 의존 테스트는 `pytest.importorskip("PyQt5")` 또는 `@pytest.mark.skipif`로 CI 호환
-- 백테스트 Dialog 테스트 7건은 PyQt5 없는 환경에서 skip
-- 성과 지표(performance.py)는 순수 함수 — stdlib만 사용, 외부 의존성 없음
+- 성과 지표(performance.py)는 순수 함수 — stdlib만 사용
