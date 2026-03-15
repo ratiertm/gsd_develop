@@ -101,12 +101,12 @@ if _HAS_PG:
                 if body_height == 0:
                     body_height = 1
 
-                painter.drawRect(
-                    QPointF(time_idx - body_width / 2, body_bottom).x(),
-                    QPointF(time_idx - body_width / 2, body_bottom).y(),
+                painter.drawRect(QRectF(
+                    time_idx - body_width / 2,
+                    body_bottom,
                     body_width,
                     body_height,
-                )
+                ))
 
             painter.end()
 

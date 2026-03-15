@@ -5,6 +5,19 @@ from unittest.mock import MagicMock
 
 import pytest
 
+
+@pytest.fixture(scope="session")
+def qapp():
+    """Session-scoped QApplication for all PyQt5 tests."""
+    try:
+        from PyQt5.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication([])
+        return app
+    except ImportError:
+        pytest.skip("PyQt5 not available")
+
 from kiwoom_trader.config.settings import Settings
 from kiwoom_trader.core.models import RiskConfig
 

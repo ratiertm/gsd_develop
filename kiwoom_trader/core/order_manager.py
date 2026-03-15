@@ -19,6 +19,8 @@ except ImportError:
 
     _HAS_PYQT5 = False
 
+import threading
+
 from loguru import logger
 
 from kiwoom_trader.config.constants import (
@@ -57,6 +59,7 @@ class OrderManager(QObject if _HAS_PYQT5 else object):
             super().__init__()
         self._api = kiwoom_api
         self._account_no = account_no
+        self._lock = threading.RLock()
         self._orders: dict[str, Order] = {}
         self._pending_orders: dict[str, Order] = {}  # temp_id -> Order (awaiting real order_no)
         self._screen_counter = SCREEN.ORDER_BASE
@@ -76,6 +79,9 @@ class OrderManager(QObject if _HAS_PYQT5 else object):
         On send_order() returning 0: transitions to SUBMITTED, stores order.
         On send_order() returning negative: transitions to REJECTED.
         """
+        if not self._account_no:
+            logger.error("계좌번호 미설정 — 주문 거부")
+            return None
         order_type = OrderType.NEW_BUY if side == OrderSide.BUY else OrderType.NEW_SELL
         screen_no = self._next_screen_no()
 
@@ -110,7 +116,8 @@ class OrderManager(QObject if _HAS_PYQT5 else object):
         if ret == ORDER_ERROR.SUCCESS:
             self._transition_state(order, OrderState.SUBMITTED)
             # Store in pending until chejan assigns real order_no
-            self._pending_orders[temp_order_no] = order
+            with self._lock:
+                self._pending_orders[temp_order_no] = order
             self.order_submitted.emit(order.order_no)
             logger.info(
                 f"Order submitted: {order.order_no} {side.name} {code} "
@@ -130,7 +137,7 @@ class OrderManager(QObject if _HAS_PYQT5 else object):
 
         Returns the send_order return code (0 = accepted, negative = error).
         """
-        order = self._orders.get(order_no)
+        order = self._orders.get(order_no) or self._pending_orders.get(order_no)
         if order is None:
             logger.error(f"cancel_order: unknown order_no={order_no}")
             return -1
@@ -170,6 +177,11 @@ class OrderManager(QObject if _HAS_PYQT5 else object):
 
     def _handle_order_chejan(self):
         """Parse gubun=0 (order/execution) chejan data and update order state."""
+        with self._lock:
+            self._handle_order_chejan_inner()
+
+    def _handle_order_chejan_inner(self):
+        """Inner implementation (called under lock)."""
         # Parse FIDs
         order_no = self._api.get_chejan_data(CHEJAN_FID.ORDER_NO).strip()
         raw_code = self._api.get_chejan_data(CHEJAN_FID.CODE).strip()
@@ -281,14 +293,15 @@ class OrderManager(QObject if _HAS_PYQT5 else object):
         return True
 
     def get_order(self, order_no: str) -> Order | None:
-        """Retrieve an order by order_no. Returns None if not found."""
-        return self._orders.get(order_no)
+        """Retrieve an order by order_no (searches both confirmed and pending)."""
+        return self._orders.get(order_no) or self._pending_orders.get(order_no)
 
     def get_active_orders(self) -> list[Order]:
         """Return all orders not in terminal states (FILLED, CANCELLED, REJECTED)."""
+        all_orders = list(self._orders.values()) + list(self._pending_orders.values())
         return [
             order
-            for order in self._orders.values()
+            for order in all_orders
             if order.state not in _TERMINAL_STATES
         ]
 

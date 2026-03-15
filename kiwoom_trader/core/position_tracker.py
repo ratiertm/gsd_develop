@@ -119,6 +119,10 @@ class PositionTracker:
         """Accumulate daily realized P&L."""
         self._daily_realized_pnl += amount
 
+    def clear_all(self) -> None:
+        """Remove all positions (e.g. on account switch)."""
+        self._positions.clear()
+
     def reset_daily(self) -> None:
         """Clear daily realized P&L for new trading day."""
         self._daily_realized_pnl = 0.0

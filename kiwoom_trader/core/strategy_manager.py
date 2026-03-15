@@ -305,6 +305,11 @@ class StrategyManager:
                 logger.warning("Paper mode but no PaperTrader configured")
         else:
             # Live mode: validate then submit
+            if self._risk_manager is None or self._order_manager is None:
+                logger.error(
+                    "Live mode but RiskManager/OrderManager not initialized"
+                )
+                return
             side = OrderSide.BUY if signal.side == "BUY" else OrderSide.SELL
             valid, reason = self._risk_manager.validate_order(
                 signal.code, side, 1, signal.price

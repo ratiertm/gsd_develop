@@ -15,6 +15,8 @@ try:
         QHBoxLayout,
         QHeaderView,
         QLabel,
+        QMessageBox,
+        QPushButton,
         QSplitter,
         QTabWidget,
         QTableWidget,
@@ -36,6 +38,8 @@ except ImportError:
     QFormLayout = MagicMock
     QGroupBox = MagicMock
     QHBoxLayout = MagicMock
+    QMessageBox = MagicMock
+    QPushButton = MagicMock
     QHeaderView = MagicMock()
     QLabel = MagicMock
     QSplitter = MagicMock
@@ -158,15 +162,26 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
         self._lbl_connected = QLabel("--")
         self._lbl_market_state = QLabel("--")
         self._lbl_strategy_count = QLabel("--")
-        self._lbl_mode = QLabel("--")
         self._cmb_account = QComboBox()
         self._lbl_user_name = QLabel("--")
+
+        # Mode toggle button
+        self._btn_mode = QPushButton("모의투자")
+        self._btn_mode.setCheckable(True)
+        self._btn_mode.setStyleSheet(
+            "QPushButton { background-color: #4CAF50; color: white; "
+            "font-weight: bold; padding: 4px 12px; border-radius: 4px; }"
+            "QPushButton:checked { background-color: #EF5350; }"
+        )
+        self._btn_mode.clicked.connect(self._on_mode_toggle)
+        self._on_mode_change = None  # external callback
+
         status_form.addRow("연결 상태:", self._lbl_connected)
         status_form.addRow("사용자:", self._lbl_user_name)
         status_form.addRow("계좌:", self._cmb_account)
         status_form.addRow("장 상태:", self._lbl_market_state)
         status_form.addRow("활성 전략:", self._lbl_strategy_count)
-        status_form.addRow("모드:", self._lbl_mode)
+        status_form.addRow("모드:", self._btn_mode)
         status_group.setLayout(status_form)
         right_layout.addWidget(status_group)
 
@@ -359,6 +374,32 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
 
             self._lbl_total_invested.setText(_format_price(total_invested))
 
+    def _on_mode_toggle(self, checked: bool):
+        """Handle mode button toggle with confirmation dialog."""
+        if checked:
+            # Switching to live
+            reply = QMessageBox.warning(
+                self, "실전투자 전환",
+                "실전투자 모드로 전환하시겠습니까?\n실제 주문이 실행됩니다.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                self._btn_mode.setChecked(False)
+                return
+            self._btn_mode.setText("실전투자")
+            new_mode = "live"
+        else:
+            self._btn_mode.setText("모의투자")
+            new_mode = "paper"
+
+        if self._on_mode_change:
+            self._on_mode_change(new_mode)
+
+    def get_mode(self) -> str:
+        """Return current mode: 'paper' or 'live'."""
+        return "live" if _HAS_PYQT5 and self._btn_mode.isChecked() else "paper"
+
     def set_accounts(
         self,
         accounts: list[str],
@@ -414,8 +455,9 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
             self._lbl_connected.setStyleSheet(f"color: {conn_color}; font-weight: bold;")
             self._lbl_market_state.setText(market_state)
             self._lbl_strategy_count.setText(str(strategy_count))
-            mode_label = "모의투자" if mode == "paper" else "실전투자"
-            self._lbl_mode.setText(mode_label)
+            is_live = mode == "live"
+            self._btn_mode.setChecked(is_live)
+            self._btn_mode.setText("실전투자" if is_live else "모의투자")
 
     def append_log(self, text: str) -> None:
         """Append a timestamped log line. Trims to 500 lines max."""

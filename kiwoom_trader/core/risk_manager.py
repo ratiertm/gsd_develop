@@ -55,6 +55,8 @@ class RiskManager(QObject if _HAS_PYQT5 else object):
         self._position_tracker = position_tracker
         self._market_hours = market_hours
         self._risk_config = risk_config
+        if total_capital <= 0:
+            raise ValueError(f"total_capital must be > 0, got {total_capital}")
         self._total_capital = total_capital
         self._daily_buy_blocked = False
         logger.info(

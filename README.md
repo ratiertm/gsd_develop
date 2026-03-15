@@ -95,7 +95,7 @@ tests/          테스트 (369+ test cases)
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | API Foundation | Complete |
-| 2 | Order Execution & Risk Management | In Progress |
+| 2 | Order Execution & Risk Management | Complete |
 | 3 | Data Pipeline & Strategy Engine | Complete |
 | 4 | Monitoring & Operations (GUI) | Complete |
 | 5 | Backtest & Validation | Complete |

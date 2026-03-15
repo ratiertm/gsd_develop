@@ -1,9 +1,10 @@
-"""Phase 7~8 시뮬레이션 테스트: 샘플 데이터로 실시간 수신 → 주문 → 체결 E2E 검증.
+"""Phase 7~9 시뮬레이션 테스트: 샘플 데이터로 전체 파이프라인 검증.
 
-실제 키움 API 없이 전체 파이프라인을 테스트한다:
-1. 실시간 데이터 수신 → RealDataManager → CandleAggregator
+실제 키움 API 없이 테스트:
+1. 실시간 데이터 수신 → RealDataManager → 구독자 디스패치
 2. 주문 제출 → chejan 콜백 → OrderManager 상태 전이
 3. 잔고 업데이트 → PositionTracker 동기화
+4. opw00018 잔고 조회 → PositionTracker 초기 동기화
 
 실행:
     .venv32\\Scripts\\python.exe -m pytest tests/test_live_simulation.py -v
@@ -424,3 +425,116 @@ class TestSellOrder:
 
         # Position should be removed
         assert pt.get_position("005930") is None
+
+
+# ===========================================================================
+# Test 5: opw00018 잔고 조회 → PositionTracker 초기 동기화
+# ===========================================================================
+class TestBalanceQuery:
+    """Phase 9: 잔고 조회 TR → PositionTracker 동기화."""
+
+    def _make_balance_query(self):
+        api = _make_mock_api()
+        tr_queue = MagicMock()
+        event_registry = MagicMock()
+
+        from kiwoom_trader.api.balance_query import BalanceQuery
+        bq = BalanceQuery(api, tr_queue, event_registry)
+        return api, tr_queue, event_registry, bq
+
+    def test_query_enqueues_tr(self):
+        """query() 호출 시 TR 큐에 요청이 등록된다."""
+        api, tr_queue, registry, bq = self._make_balance_query()
+
+        bq.query("7033652731")
+
+        tr_queue.enqueue.assert_called_once()
+        call_kwargs = tr_queue.enqueue.call_args
+        assert call_kwargs[1]["tr_code"] == "opw00018"
+
+    def test_response_parses_positions(self):
+        """TR 응답에서 보유 종목 목록이 파싱된다."""
+        api, tr_queue, registry, bq = self._make_balance_query()
+
+        # Sample: 삼성전자 10주, 카카오 5주
+        sample_data = {
+            ("opw00018", "", 0, "종목번호"): " A005930",
+            ("opw00018", "", 0, "종목명"): "삼성전자",
+            ("opw00018", "", 0, "보유수량"): "10",
+            ("opw00018", "", 0, "매입가"): "58000",
+            ("opw00018", "", 0, "현재가"): "59000",
+            ("opw00018", "", 0, "평가손익"): "10000",
+            ("opw00018", "", 0, "수익률(%)"): "1.72",
+            ("opw00018", "", 1, "종목번호"): " A035720",
+            ("opw00018", "", 1, "종목명"): "카카오",
+            ("opw00018", "", 1, "보유수량"): "5",
+            ("opw00018", "", 1, "매입가"): "45000",
+            ("opw00018", "", 1, "현재가"): "44000",
+            ("opw00018", "", 1, "평가손익"): "-5000",
+            ("opw00018", "", 1, "수익률(%)"): "-2.22",
+        }
+
+        api.get_repeat_cnt.return_value = 2
+        api.get_comm_data.side_effect = lambda tc, rn, idx, item: \
+            sample_data.get((tc, rn, idx, item), "")
+
+        results = []
+        bq.query("7033652731", on_complete=lambda pos: results.extend(pos))
+
+        # Simulate TR response callback
+        bq._on_receive("3000", "계좌평가잔고내역요청", "opw00018", "", "0", 0, "", "", "")
+
+        assert len(results) == 2
+        assert results[0]["code"] == "005930"
+        assert results[0]["qty"] == 10
+        assert results[0]["buy_price"] == 58000
+        assert results[0]["current_price"] == 59000
+        assert results[1]["code"] == "035720"
+        assert results[1]["qty"] == 5
+
+    def test_balance_to_position_tracker(self):
+        """잔고 조회 결과 → PositionTracker 반영 E2E."""
+        api, tr_queue, registry, bq = self._make_balance_query()
+        risk_config = RiskConfig()
+        pt = PositionTracker(risk_config)
+
+        sample_data = {
+            ("opw00018", "", 0, "종목번호"): " A005930",
+            ("opw00018", "", 0, "종목명"): "삼성전자",
+            ("opw00018", "", 0, "보유수량"): "10",
+            ("opw00018", "", 0, "매입가"): "58000",
+            ("opw00018", "", 0, "현재가"): "59000",
+            ("opw00018", "", 0, "평가손익"): "10000",
+            ("opw00018", "", 0, "수익률(%)"): "1.72",
+        }
+
+        api.get_repeat_cnt.return_value = 1
+        api.get_comm_data.side_effect = lambda tc, rn, idx, item: \
+            sample_data.get((tc, rn, idx, item), "")
+
+        def on_complete(positions_list):
+            for pos in positions_list:
+                pt.update_from_chejan(
+                    pos["code"], pos["qty"], pos["buy_price"], pos["current_price"]
+                )
+
+        bq.query("7033652731", on_complete=on_complete)
+        bq._on_receive("3000", "계좌평가잔고내역요청", "opw00018", "", "0", 0, "", "", "")
+
+        pos = pt.get_position("005930")
+        assert pos is not None
+        assert pos.qty == 10
+        assert pos.avg_price == 58000
+        assert pos.unrealized_pnl == 10000  # (59000-58000)*10
+
+    def test_empty_balance(self):
+        """보유 종목 없을 때 빈 목록 반환."""
+        api, tr_queue, registry, bq = self._make_balance_query()
+
+        api.get_repeat_cnt.return_value = 0
+
+        results = []
+        bq.query("7033652731", on_complete=lambda pos: results.extend(pos))
+        bq._on_receive("3000", "계좌평가잔고내역요청", "opw00018", "", "0", 0, "", "", "")
+
+        assert len(results) == 0

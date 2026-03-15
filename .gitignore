@@ -19,7 +19,18 @@ desktop.ini
 Thumbs.db
 .DS_Store
 
+# Virtual environments
+.venv*/
+
+# Logs
+logs/
+
+# Binary / installer files
+*.exe
+*.zip
+
 # Test
 .pytest_cache/
 htmlcov/
 .coverage
+tests/screenshots/

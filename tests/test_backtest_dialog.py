@@ -27,15 +27,6 @@ pytestmark = pytest.mark.skipif(not _HAS_PYQT5, reason="PyQt5/pyqtgraph not avai
 # Fixtures
 # ------------------------------------------------------------------ #
 
-@pytest.fixture(scope="module")
-def qapp():
-    """Ensure a QApplication exists for the test session."""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
-
-
 def _make_dummy_result() -> BacktestResult:
     """Create a BacktestResult with realistic dummy data."""
     now = datetime(2026, 1, 1, 9, 0, 0)

@@ -1,27 +1,125 @@
 {
-    "tr_interval_ms": 4000,
-    "heartbeat_interval_ms": 30000,
-    "max_reconnect_retries": 5,
-    "real_data_fids": {
-        "stock_execution": "10;11;12;13;15;20;21;25;27;28;41;61;62;63;64;65;66;67;68;69",
-        "stock_orderbook": "41;61;62;63;64;65;66;67;68;69;71;72;73;74;75;76;77;78;79;80"
+  "tr_interval_ms": 4000,
+  "heartbeat_interval_ms": 30000,
+  "max_reconnect_retries": 5,
+  "real_data_fids": {
+    "stock_execution": "10;11;12;13;15;20;21;25;27;28;41;61;62;63;64;65;66;67;68;69",
+    "stock_orderbook": "41;61;62;63;64;65;66;67;68;69;71;72;73;74;75;76;77;78;79;80"
+  },
+  "watchlist": [
+    "005930",
+    "035720"
+  ],
+  "mode": "live",
+  "candle_interval_minutes": 1,
+  "total_capital": 10000000,
+  "strategies": [
+    {
+      "name": "RSI_REVERSAL",
+      "enabled": true,
+      "priority": 10,
+      "cooldown_sec": 300,
+      "indicators": {
+        "rsi": {
+          "type": "rsi",
+          "period": 14
+        }
+      },
+      "entry_rule": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "indicator": "rsi",
+            "operator": "lt",
+            "value": 30
+          }
+        ]
+      },
+      "exit_rule": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 70
+          }
+        ]
+      }
     },
-    "watchlist": ["005930", "035720"],
-    "log_dir": "logs",
-    "risk": {
-        "stop_loss_pct": -2.0,
-        "take_profit_pct": 3.0,
-        "trailing_stop_pct": 1.5,
-        "max_symbol_weight_pct": 20.0,
-        "max_positions": 5,
-        "daily_loss_limit_pct": 3.0,
-        "split_count": 3,
-        "split_interval_sec": 45,
-        "trading_start": "09:05",
-        "trading_end_new_buy": "15:15",
-        "auction_start_am": "08:30",
-        "auction_end_am": "09:00",
-        "auction_start_pm": "15:20",
-        "auction_end_pm": "15:30"
+    {
+      "name": "MA_CROSSOVER",
+      "enabled": true,
+      "priority": 20,
+      "cooldown_sec": 300,
+      "indicators": {
+        "ema_short": {
+          "type": "ema",
+          "period": 5
+        },
+        "ema_long": {
+          "type": "ema",
+          "period": 20
+        }
+      },
+      "entry_rule": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "indicator": "ema_short",
+            "operator": "cross_above",
+            "value": 0
+          }
+        ]
+      },
+      "exit_rule": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "indicator": "ema_short",
+            "operator": "cross_below",
+            "value": 0
+          }
+        ]
+      }
     }
+  ],
+  "watchlist_strategies": {
+    "005930": [
+      "RSI_REVERSAL",
+      "MA_CROSSOVER"
+    ],
+    "035720": [
+      "RSI_REVERSAL"
+    ]
+  },
+  "notification": {
+    "gui_popup_enabled": true,
+    "log_enabled": true,
+    "discord_enabled": false,
+    "discord_rate_limit_sec": 2
+  },
+  "backtest": {
+    "buy_commission_pct": 0.015,
+    "sell_commission_pct": 0.015,
+    "tax_pct": 0.18,
+    "slippage_bp": 5.0,
+    "initial_capital": 10000000
+  },
+  "log_dir": "logs",
+  "risk": {
+    "stop_loss_pct": -2.0,
+    "take_profit_pct": 3.0,
+    "trailing_stop_pct": 1.5,
+    "max_symbol_weight_pct": 20.0,
+    "max_positions": 5,
+    "daily_loss_limit_pct": 3.0,
+    "split_count": 3,
+    "split_interval_sec": 45,
+    "trading_start": "09:05",
+    "trading_end_new_buy": "15:15",
+    "auction_start_am": "08:30",
+    "auction_end_am": "09:00",
+    "auction_start_pm": "15:20",
+    "auction_end_pm": "15:30"
+  }
 }

@@ -15,6 +15,8 @@ import pytest
 
 # Ensure PyQt5/pyqtgraph imports fail so chart_tab falls back to object base class.
 # This avoids MagicMock inheritance issues with staticmethod/class methods.
+# We block imports, import the chart modules (which cache _HAS_PYQT5=False),
+# then RESTORE sys.modules so later tests can use real PyQt5.
 _BLOCK_MODULES = ["PyQt5", "PyQt5.QtWidgets", "PyQt5.QtCore", "PyQt5.QtGui", "pyqtgraph"]
 _saved = {}
 for _mod in _BLOCK_MODULES:
@@ -22,6 +24,14 @@ for _mod in _BLOCK_MODULES:
     sys.modules[_mod] = None  # type: ignore[assignment]  # Forces ImportError
 
 from kiwoom_trader.core.models import Candle
+from kiwoom_trader.gui.chart_tab import ChartTab  # noqa: E402 — import under blocked PyQt5
+
+# Restore sys.modules so other test files can import PyQt5 normally
+for _mod in _BLOCK_MODULES:
+    if _saved[_mod] is None:
+        sys.modules.pop(_mod, None)
+    else:
+        sys.modules[_mod] = _saved[_mod]
 
 
 def _make_candle(code: str = "005930", open_: int = 100, close: int = 110,

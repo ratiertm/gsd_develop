@@ -103,6 +103,13 @@ class KiwoomAPI(QObject):
             screen_no,
         )
 
+    def get_repeat_cnt(self, tr_code: str, record_name: str) -> int:
+        """Get the number of data rows in a multi-row TR response."""
+        ret = self.ocx.dynamicCall(
+            "GetRepeatCnt(QString, QString)", tr_code, record_name
+        )
+        return int(ret)
+
     def get_comm_data(
         self, tr_code: str, record_name: str, index: int, item_name: str
     ) -> str:

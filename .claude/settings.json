@@ -8,5 +8,31 @@
       "Bash(.venv/bin/python3 -m pytest tests/ -x -q)",
       "Bash(node \"$HOME/.claude/get-shit-done/bin/gsd-tools.cjs\" roadmap set-phase-status \"5\" \"complete\")"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-check-update.js"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-context-monitor.js"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node .claude/hooks/gsd-statusline.js"
   }
 }

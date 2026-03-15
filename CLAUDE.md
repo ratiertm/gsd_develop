@@ -30,9 +30,9 @@ kiwoom_trader/
     notification/   # 알림 시스템 (Notifier, Discord 웹훅)
   backtest/         # Phase 5: 백테스트 (DataSource, 비용모델, 엔진, 성과분석, QThread)
   utils/            # 로깅 설정
-  main.py           # 진입점 - 모든 컴포넌트 와이어링 (Phase 1~6)
+  main.py           # 진입점 - 모든 컴포넌트 와이어링 (Phase 1~10)
 tests/              # pytest 테스트
-  test_live_simulation.py  # Phase 7~8 샘플 데이터 E2E 시뮬레이션 (13건)
+  test_live_simulation.py  # Phase 7~9 샘플 데이터 E2E 시뮬레이션 (17건)
   test_live_order.py       # Phase 8 모의투자 주문 테스트 (장중 실행용)
 .planning/          # GSD 워크플로우 (로드맵, 요구사항, 페이즈별 계획/검증)
 ```
@@ -55,7 +55,7 @@ python -m pytest tests/ -x -q --ignore=tests/test_live_order.py
 - **PyQt5 try/except fallback**: 모든 Qt import는 `try/except ImportError`로 감싸서 macOS에서도 import 가능. `_HAS_PYQT5` 플래그로 분기.
 - **Config-driven**: 모든 파라미터는 `config.json`으로 관리. `Settings` 클래스가 읽기/쓰기 담당. 인증 정보는 `.env`.
 - **Observer pattern**: callback 등록 방식 (RealDataManager, CandleAggregator, MarketHoursManager).
-- **Phase-based wiring**: `main.py`에서 Phase 1~6 순서로 컴포넌트 생성 및 시그널 연결.
+- **Phase-based wiring**: `main.py`에서 Phase 1~10 순서로 컴포넌트 생성 및 시그널 연결.
 - **GSD + PDCA 하이브리드**: v2.0부터 GSD 로드맵 + PDCA 실행 방식. 각 Phase에 Gate Condition 필수.
 
 ## Key Conventions
@@ -68,6 +68,11 @@ python -m pytest tests/ -x -q --ignore=tests/test_live_order.py
 - 백테스트 비용: 매수 수수료 + 매도 수수료 + 거래세 0.18%(매도) + 슬리페이지
 - chejan = 체결/잔고. `OnReceiveChejanData`의 gubun=0은 체결, gubun=1은 잔고
 - 주문번호 매핑: submit_order()는 임시번호(ORD_*), chejan에서 실제 거래소 번호로 전환
+- OrderManager는 `threading.RLock`으로 chejan 이벤트 동시 접근 보호
+- 계좌 전환/모드 전환 시 `BalanceQuery` → `PositionTracker` 자동 재동기화
+- 세션 복구(`session_restored`) 시 잔고 자동 재조회
+- RiskManager 시그널(손절/익절/트레일링/일일손실) → Notifier 3채널 알림 연결
+- `total_capital > 0` 검증 (RiskManager), 빈 계좌번호 주문 차단 (OrderManager)
 
 ## Phase Status
 
@@ -86,10 +91,10 @@ python -m pytest tests/ -x -q --ignore=tests/test_live_order.py
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 6 | 로그인/접속 + 계좌 관리 | Complete |
-| 7 | 실시간 시세 (SetRealReg) | 코드 준비 완료, 장중 Gate 검증 필요 |
-| 8 | 주문 실행 (모의투자) | 코드 준비 완료, 장중 Gate 검증 필요 |
-| 9 | 잔고/포지션 동기화 | 대기 |
-| 10 | E2E 통합 | 대기 |
+| 7 | 실시간 시세 (SetRealReg) | 코드 완료, 장중 Gate 검증 필요 |
+| 8 | 주문 실행 (모의투자) | 코드 완료, 장중 Gate 검증 필요 |
+| 9 | 잔고/포지션 동기화 | 코드 완료 (PDCA Check 통과) |
+| 10 | E2E 통합 | 코드 완료 (장중 30분 라이브 러닝 필요) |
 
 ## Testing Notes
 

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/ -q --ignore=tests/test_backtest_dialog.py)",
+      "Bash(python -m pytest tests/ -q --ignore=tests/test_backtest_dialog.py --ignore=tests/test_gui_design.py --ignore=tests/test_gui_visual.py)",
+      "Bash(python -c \":*)",
+      "Bash(winget search:*)",
+      "Bash(\"C:/Users/Mindbuild/Python310-32/python.exe\" -m venv .venv32)",
+      "Bash(.venv32/Scripts/python.exe -m pip install --upgrade pip)",
+      "Bash(.venv32/Scripts/pip.exe install:*)",
+      "Bash(.venv32/Scripts/python.exe -c \":*)",
+      "Bash(.venv32/Scripts/python.exe -m pytest tests/test_live_simulation.py -v)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''kiwoom_trader/main.py''\\).read\\(\\)\\); print\\(''OK''\\)\")",
+      "Bash(grep -r \"threading\\\\|Thread\\\\|Lock\\\\|RLock\\\\|Condition\\\\|Semaphore\\\\|Queue\" c:/Users/Mindbuild/VScode/gsd_develop/kiwoom_trader --include=*.py)",
+      "Bash(python -m pytest tests/ -v --ignore=tests/test_live_order.py --ignore=tests/test_gui_design.py --ignore=tests/test_gui_visual.py)",
+      "Bash(grep -r \"import threading\\\\|from threading\\\\|\\\\.thread\\\\|\\\\.start\\(\\)\" c:/Users/Mindbuild/VScode/gsd_develop/kiwoom_trader --include=*.py)",
+      "Bash(python -m pytest tests/test_live_simulation.py -x -q)"
+    ]
+  }
+}

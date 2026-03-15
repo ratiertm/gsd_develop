@@ -5,6 +5,7 @@ using real component instances (no mocks except for OrderManager/RiskManager).
 """
 
 import datetime as dt
+import os
 from datetime import datetime, timedelta
 
 import pytest
@@ -180,7 +181,7 @@ class TestMACrossoverSignal:
         """Feed enough candles for EMA(5) to cross above EMA(20) -> BUY signal."""
         config = _make_config(strategies=[MA_STRATEGY_CONFIG])
         condition_engine = ConditionEngine()
-        paper_trader = PaperTrader(csv_path="/dev/null", initial_capital=10_000_000)
+        paper_trader = PaperTrader(csv_path=os.devnull, initial_capital=10_000_000)
         strategy_manager = StrategyManager(
             condition_engine=condition_engine,
             risk_manager=None,
@@ -214,7 +215,7 @@ class TestCooldownPreventsRapidSignals:
         """Trigger RSI buy, then immediately provide another buy condition -> blocked."""
         config = _make_config(strategies=[RSI_STRATEGY_CONFIG])
         condition_engine = ConditionEngine()
-        paper_trader = PaperTrader(csv_path="/dev/null", initial_capital=10_000_000)
+        paper_trader = PaperTrader(csv_path=os.devnull, initial_capital=10_000_000)
         strategy_manager = StrategyManager(
             condition_engine=condition_engine,
             risk_manager=None,
@@ -301,7 +302,7 @@ class TestMultipleStrategiesPriority:
         )
 
         condition_engine = ConditionEngine()
-        paper_trader = PaperTrader(csv_path="/dev/null", initial_capital=10_000_000)
+        paper_trader = PaperTrader(csv_path=os.devnull, initial_capital=10_000_000)
         strategy_manager = StrategyManager(
             condition_engine=condition_engine,
             risk_manager=None,
@@ -402,7 +403,7 @@ class TestVWAPAndCooldownResetOnTradingStart:
             order_manager=None,
             config=config,
         )
-        paper_trader = PaperTrader(csv_path="/dev/null", initial_capital=10_000_000)
+        paper_trader = PaperTrader(csv_path=os.devnull, initial_capital=10_000_000)
         strategy_manager.paper_trader = paper_trader
 
         # Wire the state callback (same as main.py does)

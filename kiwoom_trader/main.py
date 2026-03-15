@@ -19,6 +19,7 @@ from kiwoom_trader.api import (
     SessionManager,
     TRRequestQueue,
 )
+from kiwoom_trader.api.balance_query import BalanceQuery
 from kiwoom_trader.config.settings import Settings
 from kiwoom_trader.utils.logger import setup_logging
 
@@ -107,9 +108,14 @@ def main():
     )
 
     # Wire session events
-    session_manager.session_restored.connect(
-        lambda: logger.info("Session restored")
-    )
+    def _on_session_restored():
+        """Reload balance on reconnect to sync PositionTracker with broker."""
+        logger.info("Session restored")
+        account_no = os.environ.get("KIWOOM_ACCOUNT_NO", "")
+        if account_no:
+            _select_account(account_no)
+
+    session_manager.session_restored.connect(_on_session_restored)
     session_manager.session_lost.connect(
         lambda: logger.warning("Session lost")
     )
@@ -170,6 +176,8 @@ def main():
     # === Phase 3: Data Pipeline & Strategy Engine ===
     candle_aggregator = None
     strategy_manager = None
+    paper_trader = None
+    market_state_timer = None  # Keep ref to prevent GC
     if _HAS_STRATEGY and CandleAggregator is not None:
         strategy_config = settings.strategy_config
         mode = strategy_config["mode"]
@@ -281,6 +289,50 @@ def main():
             main_window=main_window,
         )
 
+        # --- Wire mode toggle ---
+        def _on_mode_change(new_mode: str):
+            """Switch between paper and live mode, updating StrategyManager and config."""
+            nonlocal paper_trader
+
+            # 1. Update config and persist
+            settings._config["mode"] = new_mode
+            settings.save()
+
+            if strategy_manager is None:
+                logger.info(f"모드 전환: {new_mode} (StrategyManager 없음)")
+                return
+
+            # 2. Update StrategyManager mode
+            strategy_manager._mode = new_mode
+
+            # 3. PaperTrader lifecycle
+            if new_mode == "paper":
+                # Create PaperTrader if not exists
+                if strategy_manager.paper_trader is None and _HAS_STRATEGY:
+                    strategy_cfg = settings.strategy_config
+                    paper_trader = PaperTrader(
+                        csv_path="logs/trades.csv",
+                        initial_capital=strategy_cfg.get(
+                            "total_capital", 10_000_000
+                        ),
+                        max_symbol_weight_pct=settings.risk_config.max_symbol_weight_pct,
+                    )
+                    strategy_manager.paper_trader = paper_trader
+                    logger.info("PaperTrader 생성 및 연결")
+            else:
+                # Live mode: detach PaperTrader (keep instance for later reuse)
+                if strategy_manager.paper_trader is not None:
+                    logger.info("PaperTrader 비활성화 (실전모드)")
+
+            # 4. 잔고 재조회 (모드 전환 시 계좌 상태 동기화)
+            account_no = os.environ.get("KIWOOM_ACCOUNT_NO", "")
+            if account_no:
+                _select_account(account_no)
+
+            logger.info(f"모드 전환: {new_mode}")
+
+        dashboard._on_mode_change = _on_mode_change
+
         # --- Wire Dashboard signals ---
 
         # 1. QTimer (1s interval) to poll PositionTracker and update dashboard
@@ -303,6 +355,7 @@ def main():
 
             dashboard_timer.timeout.connect(_update_dashboard)
             dashboard_timer.start(1000)
+            main_window._dashboard_timer = dashboard_timer  # prevent GC
 
         # 2. order_filled -> dashboard: bridge signal impedance mismatch
         #    OrderManager.order_filled emits (order_no, code, qty, price)
@@ -371,9 +424,43 @@ def main():
                 level="INFO",
             )
 
-        # --- Wire Notifier to strategy/risk signals ---
-        # (Strategy signals are routed through StrategyManager._execute_signal,
-        #  risk events through RiskManager. Notifier receives via order_filled above.)
+        # --- Wire Notifier to risk signals ---
+        if risk_manager is not None:
+            risk_manager.trigger_stop_loss.connect(
+                lambda code, price: notifier.notify(
+                    "risk", f"손절 발동: {code}",
+                    f"{code} @ {price:,} — 포지션 청산",
+                    {"code": code, "price": price, "event": "STOP_LOSS"},
+                )
+            )
+            risk_manager.trigger_take_profit.connect(
+                lambda code, price: notifier.notify(
+                    "risk", f"익절 발동: {code}",
+                    f"{code} @ {price:,} — 포지션 청산",
+                    {"code": code, "price": price, "event": "TAKE_PROFIT"},
+                )
+            )
+            risk_manager.trigger_trailing_stop.connect(
+                lambda code, price: notifier.notify(
+                    "risk", f"트레일링 스탑: {code}",
+                    f"{code} @ {price:,} — 포지션 청산",
+                    {"code": code, "price": price, "event": "TRAILING_STOP"},
+                )
+            )
+            risk_manager.daily_loss_limit_hit.connect(
+                lambda: notifier.notify(
+                    "error", "일일 손실 한도 도달",
+                    "전 포지션 청산 — 금일 매수 중단",
+                    {"event": "DAILY_LOSS_LIMIT"},
+                )
+            )
+            risk_manager.position_liquidated.connect(
+                lambda code: notifier.notify(
+                    "risk", f"포지션 청산: {code}",
+                    f"{code} — 일일 손실 한도 청산",
+                    {"code": code, "event": "POSITION_LIQUIDATED"},
+                )
+            )
 
         # === Phase 5: Backtest Wiring ===
         if _HAS_BACKTEST and _HAS_STRATEGY:
@@ -460,11 +547,40 @@ def main():
         )
 
     # === Phase 6: Login & Connection ===
+
+    # Balance load callback (shared by initial login and account switch)
+    def _on_balance_loaded(positions_list):
+        """잔고 조회 완료 후 PositionTracker에 반영."""
+        if position_tracker is None:
+            return
+        position_tracker.clear_all()
+        for pos in positions_list:
+            position_tracker.update_from_chejan(
+                code=pos["code"],
+                holding_qty=pos["qty"],
+                buy_price=pos["buy_price"],
+                current_price=pos["current_price"],
+            )
+        logger.info(
+            f"PositionTracker 동기화 완료: {len(positions_list)}종목"
+        )
+
     def _select_account(account_no: str):
-        """Update the active account across all components."""
+        """Update the active account and reload balance."""
+        if not account_no or not account_no.strip():
+            logger.warning("계좌번호가 비어있습니다. 계좌 전환 무시.")
+            return
         os.environ["KIWOOM_ACCOUNT_NO"] = account_no
         if order_manager is not None:
             order_manager._account_no = account_no
+
+        # 잔고 재조회
+        bq = BalanceQuery(api, tr_queue, event_registry)
+        bq.query(account_no, on_complete=_on_balance_loaded)
+        # GC 방지
+        if _HAS_GUI and main_window is not None:
+            main_window._balance_query = bq
+
         logger.info(f"활성 계좌 변경: {account_no}")
 
     def _on_login_success(err_code):
