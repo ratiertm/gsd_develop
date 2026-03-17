@@ -22,13 +22,21 @@ class CandleAggregator:
 
     Args:
         interval_minutes: Candle interval in minutes (default 1).
+        replay_date: Date to use for candle timestamps in replay mode.
+            When set, timestamps are derived from tick exec_time (HHMMSS)
+            instead of datetime.now(). Pass None for live mode (default).
     """
 
     # Market opens at 09:00 (KST). Used as reference for minute-slot calculation.
     _MARKET_OPEN_MINUTES = 9 * 60  # 540
 
-    def __init__(self, interval_minutes: int = 1) -> None:
+    def __init__(
+        self,
+        interval_minutes: int = 1,
+        replay_date: datetime | None = None,
+    ) -> None:
         self._interval = interval_minutes
+        self._replay_date = replay_date
         self._building: dict[str, dict] = {}  # code -> partial candle data
         self._callbacks: list[Callable[[str, Candle], None]] = []
 
@@ -69,7 +77,7 @@ class CandleAggregator:
                 "low": price,
                 "close": price,
                 "volume": volume,
-                "timestamp": datetime.now(),
+                "timestamp": self._make_timestamp(exec_time),
                 "cum_price_volume": float(price) * volume,
                 "cum_volume": volume,
             }
@@ -82,6 +90,26 @@ class CandleAggregator:
         building["volume"] += volume
         building["cum_price_volume"] += float(price) * volume
         building["cum_volume"] += volume
+
+    def _make_timestamp(self, exec_time: str) -> datetime:
+        """Create a timestamp from exec_time (HHMMSS).
+
+        In replay mode, combines replay_date with exec_time.
+        In live mode, falls back to datetime.now().
+        """
+        if self._replay_date is not None and len(exec_time) >= 6:
+            hh, mm, ss = int(exec_time[:2]), int(exec_time[2:4]), int(exec_time[4:6])
+            return self._replay_date.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        return datetime.now()
+
+    def flush(self) -> None:
+        """Finalize and emit all building candles.
+
+        Call at end of replay to emit the last partial candle for each code.
+        """
+        for code in list(self._building):
+            building = self._building.pop(code)
+            self._finalize_candle(code, building)
 
     def _get_minute_slot(self, exec_time: str) -> int:
         """Calculate the minute slot from HHMMSS execution time.

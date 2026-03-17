@@ -29,11 +29,20 @@ kiwoom_trader/
     widgets/        # 재사용 위젯 (캔들스틱, 인디케이터 차트, 토스트)
     notification/   # 알림 시스템 (Notifier, Discord 웹훅)
   backtest/         # Phase 5: 백테스트 (DataSource, 비용모델, 엔진, 성과분석, QThread)
+    replay_engine.py  # 틱 리플레이 엔진 (수집 데이터 → 라이브 파이프라인 재생)
   utils/            # 로깅 설정
   main.py           # 진입점 - 모든 컴포넌트 와이어링 (Phase 1~10)
+scripts/
+  collector.py      # 데이터 수집기 (분봉 TR 조회 + 실시간 틱 수집 → SQLite/CSV)
+  replay.py         # 리플레이 CLI (수집 DB → ReplayEngine → 성과 분석)
+  realtime_collector.py  # 실시간 수집 전용 (collector.py 이전 버전)
+  fetch_minute_candles.py  # 분봉 조회 전용
+data/               # 수집 데이터 (realtime_{date}.db, 체결/호가 CSV 등)
 tests/              # pytest 테스트
   test_live_simulation.py  # Phase 7~9 샘플 데이터 E2E 시뮬레이션 (17건)
   test_live_order.py       # Phase 8 모의투자 주문 테스트 (장중 실행용)
+  test_replay_engine.py    # ReplayEngine 단위 테스트
+docs/               # 설계 문서 (collector-spec.md, replay-engine-spec.md)
 .planning/          # GSD 워크플로우 (로드맵, 요구사항, 페이즈별 계획/검증)
 ```
 
@@ -42,6 +51,15 @@ tests/              # pytest 테스트
 ```bash
 # 앱 실행 (32-bit Python 필수)
 .venv32\Scripts\python.exe -m kiwoom_trader.main
+
+# 데이터 수집 (32-bit 필수 — 키움 COM 사용)
+.venv32\Scripts\python.exe scripts/collector.py
+.venv32\Scripts\python.exe scripts/collector.py --interval 3 --days 5
+.venv32\Scripts\python.exe scripts/collector.py --skip-history --types 체결,호가
+
+# 틱 리플레이 (64-bit 가능 — COM 불필요)
+python scripts/replay.py data/realtime_20260317.db
+python scripts/replay.py data/realtime_20260317.db --codes 005930 --capital 50000000
 
 # 테스트 실행 (32-bit)
 .venv32\Scripts\python.exe -m pytest tests/test_live_simulation.py -v
@@ -65,7 +83,10 @@ python -m pytest tests/ -x -q --ignore=tests/test_live_order.py
 - `Candle` dataclass가 모든 봉 데이터의 표준 형식
 - `Signal` dataclass가 매매 신호의 표준 형식
 - 리스크 파라미터는 `RiskConfig` dataclass로 통합 관리
-- 백테스트 비용: 매수 수수료 + 매도 수수료 + 거래세 0.18%(매도) + 슬리페이지
+- 백테스트/리플레이 비용: 매수 수수료 + 매도 수수료 + 거래세 0.18%(매도) + 슬리피지
+- ReplayEngine은 raw tick → CandleAggregator → StrategyManager (라이브와 동일 코드 경로)
+- collector.py: Phase1(분봉 TR) → Phase2(실시간 틱) → SQLite/CSV 이중 저장, 18시 자동 종료
+- 수집 DB(체결 테이블)의 fid_* 컬럼이 ReplayEngine의 입력 데이터
 - chejan = 체결/잔고. `OnReceiveChejanData`의 gubun=0은 체결, gubun=1은 잔고
 - 주문번호 매핑: submit_order()는 임시번호(ORD_*), chejan에서 실제 거래소 번호로 전환
 - OrderManager는 `threading.RLock`으로 chejan 이벤트 동시 접근 보호

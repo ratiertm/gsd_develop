@@ -8,6 +8,8 @@
 - **리스크 관리** - 손절/익절, 트레일링 스탑, 분할매매, 포지션 제한, 일일 손실 한도
 - **실시간 GUI** - PyQt5 대시보드 (보유종목, 주문현황, 수익률, 실시간 캔들차트)
 - **백테스트** - 과거 데이터로 전략 시뮬레이션, 성과 분석(수익률, MDD, 승률, 샤프비율), 결과 시각화
+- **데이터 수집** - 실시간 틱(체결/호가/거래원) + 과거 분봉 통합 수집, SQLite/CSV 이중 저장
+- **틱 리플레이** - 수집된 실시간 데이터를 라이브와 동일한 코드 경로로 재생하여 전략 검증
 - **알림 시스템** - GUI 토스트 팝업, 로그 파일, Discord 웹훅
 
 ## Requirements
@@ -30,8 +32,16 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-# 앱 실행
-python -m kiwoom_trader.main
+# 앱 실행 (32-bit Python 필수)
+.venv32\Scripts\python.exe -m kiwoom_trader.main
+
+# 데이터 수집 (32-bit 필수 — 키움 COM 사용)
+.venv32\Scripts\python.exe scripts/collector.py                           # 분봉 3일 + 실시간 전체
+.venv32\Scripts\python.exe scripts/collector.py --skip-history --types 체결  # 실시간 체결만
+
+# 틱 리플레이 (64-bit 가능)
+python scripts/replay.py data/realtime_20260317.db
+python scripts/replay.py data/realtime_20260317.db --codes 005930,000660 --capital 50000000
 
 # 테스트 실행
 python -m pytest tests/ -x -q
@@ -45,10 +55,15 @@ kiwoom_trader/
   config/       설정 관리 (config.json, 상수 정의)
   core/         매매 엔진 (주문, 리스크, 인디케이터, 전략, 포지션)
   gui/          PyQt5 GUI (대시보드, 차트, 전략탭, 알림)
-  backtest/     백테스트 (DataSource, 비용모델, 엔진, 성과분석)
+  backtest/     백테스트 (DataSource, 비용모델, 엔진, 성과분석, 틱 리플레이)
   utils/        유틸리티 (로깅)
   main.py       진입점
-tests/          테스트 (369+ test cases)
+scripts/
+  collector.py  데이터 수집기 (분봉 TR + 실시간 틱 → SQLite/CSV)
+  replay.py     틱 리플레이 CLI (수집 DB → 전략 시뮬레이션 → 성과 분석)
+data/           수집 데이터 (realtime_{date}.db, 체결/호가 CSV 등)
+tests/          테스트
+docs/           설계 문서
 ```
 
 ## Key Components
@@ -59,7 +74,9 @@ tests/          테스트 (369+ test cases)
 | `TRRequestQueue` | TR 요청 스로틀링 (3.6초/건 제한 준수) |
 | `StrategyManager` | 전략 로드, 인디케이터 관리, 조건 평가, 신호 생성 |
 | `RiskManager` | 6-check pre-trade validation (손절/익절/트레일링/포지션제한/일일한도/장시간) |
-| `BacktestEngine` | 과거 봉 데이터 리플레이, 동일 전략/리스크 로직 적용 |
+| `BacktestEngine` | 과거 봉 데이터 기반 전략 시뮬레이션 |
+| `ReplayEngine` | 수집 틱 데이터를 라이브 파이프라인(CandleAggregator→StrategyManager)으로 재생 |
+| `collector.py` | 분봉 TR 조회 + 실시간 틱 수집 통합 (SQLite/CSV 이중 저장, 18시 자동 종료) |
 | `MainWindow` | 3-tab GUI (Dashboard, Chart, Strategy) |
 
 ## Configuration
@@ -90,7 +107,9 @@ tests/          테스트 (369+ test cases)
 
 이 프로젝트는 [GSD (Get Shit Done)](https://github.com/cline/get-shit-done) 워크플로우로 개발되었습니다.
 
-### Phase Status (v1.0)
+### Phase Status
+
+**v1.0 (Complete)**
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -99,6 +118,23 @@ tests/          테스트 (369+ test cases)
 | 3 | Data Pipeline & Strategy Engine | Complete |
 | 4 | Monitoring & Operations (GUI) | Complete |
 | 5 | Backtest & Validation | Complete |
+
+**v2.0 — API 실연동 (Active)**
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 6 | 로그인/접속 + 계좌 관리 | Complete |
+| 7 | 실시간 시세 (SetRealReg) | 코드 완료 |
+| 8 | 주문 실행 (모의투자) | 코드 완료 |
+| 9 | 잔고/포지션 동기화 | 코드 완료 |
+| 10 | E2E 통합 | 코드 완료 |
+
+**도구**
+
+| Script | Description |
+|--------|-------------|
+| `scripts/collector.py` | 실시간 데이터 수집 (분봉 + 틱) |
+| `scripts/replay.py` | 수집 데이터 틱 리플레이 |
 
 ## License
 
