@@ -1,0 +1,32 @@
+{
+  "strategy": {
+    "mode": "paper",
+    "strategies": [
+      {
+        "name": "BOLLINGER_REVERSAL",
+        "enabled": true,
+        "priority": 15,
+        "cooldown_sec": 300,
+        "indicators": {
+          "bollinger": {"type": "bollinger", "period": 20, "num_std": 2.0},
+          "rsi": {"type": "rsi", "period": 14}
+        },
+        "entry_rule": {
+          "logic": "AND",
+          "conditions": [
+            {"indicator": "price", "operator": "lt", "value_ref": "bollinger_lower"},
+            {"indicator": "rsi", "operator": "lt", "value": 30}
+          ]
+        },
+        "exit_rule": {
+          "logic": "OR",
+          "conditions": [
+            {"indicator": "price", "operator": "gt", "value_ref": "bollinger_middle"},
+            {"indicator": "rsi", "operator": "gt", "value": 80}
+          ]
+        }
+      }
+    ],
+    "watchlist_strategies": {}
+  }
+}

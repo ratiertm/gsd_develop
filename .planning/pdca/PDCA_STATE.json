@@ -12,15 +12,51 @@
   },
   "replay_engine": {
     "status": "complete",
-    "iteration": 1,
+    "iteration": 2,
     "gate_results": {
       "G1_tick_loading": "pass",
       "G2_strategy_pipeline": "pass",
-      "G3_speed_control": "pass_partial",
+      "G3_speed_control": "pass",
       "G4_performance_metrics": "pass",
+      "G5a_flush": "pass",
+      "G5b_forced_close": "pass",
+      "G5c_daily_loss_limit": "pass",
+      "G5d_risk_checks": "pass",
       "G5_pytest": "pass"
     },
-    "timestamp": "2026-03-18T05:05:00"
+    "timestamp": "2026-03-18T14:00:00"
+  },
+  "condition_engine_v3": {
+    "status": "complete",
+    "iteration": 1,
+    "gate_results": {
+      "G1_condition_model_value_ref": "pass",
+      "G2_condition_engine_resolve": "pass",
+      "G3_tuple_sub_components": "pass",
+      "G4_ema_hardcode_removed": "pass",
+      "G5_backward_compatible": "pass",
+      "G6_config_json_migrated": "pass",
+      "G7_replay_default_strategy": "pass",
+      "G8_reference_strategies": "pass",
+      "G9_tests_97_pass": "pass"
+    },
+    "timestamp": "2026-03-18T16:00:00",
+    "spec_doc": "docs/condition-engine-enhancement-spec.md",
+    "files_modified": [
+      "kiwoom_trader/core/models.py",
+      "kiwoom_trader/core/condition_engine.py",
+      "kiwoom_trader/core/strategy_manager.py",
+      "config.json",
+      "scripts/replay.py",
+      "tests/test_condition_engine.py",
+      "tests/test_strategy_manager.py"
+    ],
+    "files_created": [
+      "strategies/bollinger_rsi.json",
+      "strategies/macd_cross.json",
+      "strategies/vwap_breakout.json",
+      "docs/condition-engine-enhancement-spec.md"
+    ]
   },
   "history": [
     {
@@ -36,7 +72,29 @@
       "step": "replay_engine_complete",
       "pass_rate": "4.5/5",
       "timestamp": "2026-03-18T05:05:00",
-      "details": "464K ticks → 1140 candles → 60 trades in 7s"
+      "details": "464K ticks -> 1140 candles -> 60 trades in 7s"
+    },
+    {
+      "iteration": 2,
+      "step": "replay_engine_check_fix",
+      "pass_rate": "8/8 (100%)",
+      "timestamp": "2026-03-18T14:00:00",
+      "fixes_applied": 2,
+      "details": "G3 speed control, G5c daily_loss_limit bug fix"
+    },
+    {
+      "iteration": 3,
+      "step": "condition_engine_v3_team_check",
+      "pass_rate": "N/A (design)",
+      "timestamp": "2026-03-18T15:00:00",
+      "details": "3-agent team: architecture, impact, reference strategies"
+    },
+    {
+      "iteration": 4,
+      "step": "condition_engine_v3_do_check_act",
+      "pass_rate": "9/9 (100%)",
+      "timestamp": "2026-03-18T16:00:00",
+      "details": "value_ref impl + tuple sub-components + EMA hardcode removed + 97/97 tests pass"
     }
   ]
 }

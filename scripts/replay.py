@@ -59,14 +59,14 @@ def build_default_strategy_configs() -> dict:
                 "entry_rule": {
                     "logic": "AND",
                     "conditions": [
-                        {"indicator": "ema_short", "operator": "cross_above", "value": 0},
+                        {"indicator": "ema_short", "operator": "cross_above", "value_ref": "ema_long"},
                         {"indicator": "rsi", "operator": "lt", "value": 70},
                     ],
                 },
                 "exit_rule": {
                     "logic": "OR",
                     "conditions": [
-                        {"indicator": "ema_short", "operator": "cross_below", "value": 0},
+                        {"indicator": "ema_short", "operator": "cross_below", "value_ref": "ema_long"},
                         {"indicator": "rsi", "operator": "gt", "value": 80},
                     ],
                 },

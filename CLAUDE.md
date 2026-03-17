@@ -87,6 +87,9 @@ python -m pytest tests/ -x -q --ignore=tests/test_live_order.py
 - ReplayEngine은 raw tick → CandleAggregator → StrategyManager (라이브와 동일 코드 경로)
 - collector.py: Phase1(분봉 TR) → Phase2(실시간 틱) → SQLite/CSV 이중 저장, 18시 자동 종료
 - 수집 DB(체결 테이블)의 fid_* 컬럼이 ReplayEngine의 입력 데이터
+- ConditionEngine: `value`(고정값) 또는 `value_ref`(인디케이터 참조) 중 하나로 비교
+- 튜플 인디케이터 서브컴포넌트: `bollinger_upper/middle/lower`, `macd_line/signal/histogram`
+- 전략 설정 JSON: `docs/condition-engine-enhancement-spec.md` 참조
 - chejan = 체결/잔고. `OnReceiveChejanData`의 gubun=0은 체결, gubun=1은 잔고
 - 주문번호 매핑: submit_order()는 임시번호(ORD_*), chejan에서 실제 거래소 번호로 전환
 - OrderManager는 `threading.RLock`으로 chejan 이벤트 동시 접근 보호
@@ -116,6 +119,17 @@ python -m pytest tests/ -x -q --ignore=tests/test_live_order.py
 | 8 | 주문 실행 (모의투자) | 코드 완료, 장중 Gate 검증 필요 |
 | 9 | 잔고/포지션 동기화 | 코드 완료 (PDCA Check 통과) |
 | 10 | E2E 통합 | 코드 완료 (장중 30분 라이브 러닝 필요) |
+
+### v3.0 — 전략 엔진 고도화 (Planned)
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 11 | ConditionEngine value_ref — 인디케이터 간 비교 지원 | 설계 완료 |
+| 12 | 튜플 인디케이터 서브컴포넌트 (Bollinger/MACD) | 설계 완료 |
+| 13 | GUI 전략 편집기 value_ref 지원 | Planned |
+| 14 | 레퍼런스 전략 (볼린저, MACD 크로스, VWAP) | Planned |
+
+**설계 문서:** `docs/condition-engine-enhancement-spec.md`
 
 ## Testing Notes
 

@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import sqlite3
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -138,7 +139,9 @@ class ReplayEngine:
                 if on_signal:
                     on_signal(sig)
                 if sig.side == "BUY":
-                    if not self._check_daily_loss(candle.timestamp.date()):
+                    if self._check_daily_loss(candle.timestamp.date()):
+                        logger.debug(f"[REPLAY] Daily loss limit hit, skipping BUY {sig.code}")
+                    else:
                         self._execute_buy(sig, candle)
                 elif sig.side == "SELL":
                     self._execute_sell(sig.code, sig.price, sig.reason, candle)
@@ -155,11 +158,16 @@ class ReplayEngine:
         total_ticks = self._count_ticks(db_path, codes, start_time, end_time)
         logger.info(f"Replaying {total_ticks:,} ticks from {db_path.name}")
 
+        tick_delay = 1.0 / speed if speed > 0 else 0
+
         for i, (code, fid_dict) in enumerate(
             self._iter_ticks(db_path, codes, start_time, end_time)
         ):
             aggregator.on_tick(code, fid_dict)
             self._ticks_processed = i + 1
+
+            if tick_delay > 0:
+                time.sleep(tick_delay)
 
             if on_progress and (i + 1) % 10000 == 0:
                 on_progress(i + 1, total_ticks)

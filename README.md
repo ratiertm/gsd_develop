@@ -136,6 +136,17 @@ docs/           설계 문서
 | `scripts/collector.py` | 실시간 데이터 수집 (분봉 + 틱) |
 | `scripts/replay.py` | 수집 데이터 틱 리플레이 |
 
+**v3.0 — 전략 엔진 고도화 (Planned)**
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 11 | ConditionEngine value_ref (인디케이터 간 비교) | 설계 완료 |
+| 12 | 튜플 인디케이터 서브컴포넌트 (Bollinger/MACD) | 설계 완료 |
+| 13 | GUI 전략 편집기 value_ref 지원 | Planned |
+| 14 | 레퍼런스 전략 (볼린저, MACD, VWAP) | Planned |
+
+설계 문서: [`docs/condition-engine-enhancement-spec.md`](docs/condition-engine-enhancement-spec.md)
+
 ## License
 
 Private - All rights reserved

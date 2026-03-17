@@ -215,3 +215,79 @@ class TestMissingIndicator:
         cond = Condition(indicator="rsi", operator="cross_above", value=30.0)
         rule = CompositeRule(logic="AND", conditions=[cond])
         assert engine.evaluate(rule, {"rsi": 31.0}) is False
+
+
+class TestValueRef:
+    """Test value_ref (indicator-to-indicator comparison)."""
+
+    def test_value_ref_gt(self, engine):
+        """ema_short > ema_long via value_ref."""
+        cond = Condition(indicator="ema_short", operator="gt", value_ref="ema_long")
+        rule = CompositeRule(logic="AND", conditions=[cond])
+        assert engine.evaluate(rule, {"ema_short": 105.0, "ema_long": 100.0}) is True
+        assert engine.evaluate(rule, {"ema_short": 95.0, "ema_long": 100.0}) is False
+
+    def test_value_ref_lt(self, engine):
+        """price < bollinger_lower via value_ref."""
+        cond = Condition(indicator="price", operator="lt", value_ref="bollinger_lower")
+        rule = CompositeRule(logic="AND", conditions=[cond])
+        ctx = {"price": 67000.0, "bollinger_lower": 67500.0}
+        assert engine.evaluate(rule, ctx) is True
+
+    def test_value_ref_missing_target(self, engine):
+        """Missing value_ref indicator in context -> False (warmup)."""
+        cond = Condition(indicator="ema_short", operator="gt", value_ref="ema_long")
+        rule = CompositeRule(logic="AND", conditions=[cond])
+        assert engine.evaluate(rule, {"ema_short": 105.0}) is False
+
+    def test_value_ref_cross_above(self, engine):
+        """ema_short crosses above ema_long: prev below, current above."""
+        cond = Condition(indicator="ema_short", operator="cross_above", value_ref="ema_long")
+        rule = CompositeRule(logic="AND", conditions=[cond])
+        ctx = {
+            "ema_short": 105.0, "ema_short_prev": 99.0,
+            "ema_long": 100.0, "ema_long_prev": 101.0,
+        }
+        assert engine.evaluate(rule, ctx) is True
+
+    def test_value_ref_cross_above_no_cross(self, engine):
+        """Both already above -> not a cross."""
+        cond = Condition(indicator="ema_short", operator="cross_above", value_ref="ema_long")
+        rule = CompositeRule(logic="AND", conditions=[cond])
+        ctx = {
+            "ema_short": 105.0, "ema_short_prev": 103.0,
+            "ema_long": 100.0, "ema_long_prev": 101.0,
+        }
+        assert engine.evaluate(rule, ctx) is False
+
+    def test_value_ref_cross_below(self, engine):
+        """macd_line crosses below macd_signal."""
+        cond = Condition(indicator="macd_line", operator="cross_below", value_ref="macd_signal")
+        rule = CompositeRule(logic="AND", conditions=[cond])
+        ctx = {
+            "macd_line": 0.08, "macd_line_prev": 0.15,
+            "macd_signal": 0.10, "macd_signal_prev": 0.12,
+        }
+        assert engine.evaluate(rule, ctx) is True
+
+    def test_value_ref_cross_missing_prev(self, engine):
+        """Missing _prev for value_ref target -> False."""
+        cond = Condition(indicator="ema_short", operator="cross_above", value_ref="ema_long")
+        rule = CompositeRule(logic="AND", conditions=[cond])
+        ctx = {"ema_short": 105.0, "ema_short_prev": 99.0, "ema_long": 100.0}
+        assert engine.evaluate(rule, ctx) is False
+
+    def test_mixed_value_and_value_ref(self, engine):
+        """AND rule with both value and value_ref conditions."""
+        rule = CompositeRule(
+            logic="AND",
+            conditions=[
+                Condition(indicator="price", operator="lt", value_ref="bollinger_lower"),
+                Condition(indicator="rsi", operator="lt", value=30.0),
+            ],
+        )
+        ctx = {"price": 67000.0, "bollinger_lower": 67500.0, "rsi": 25.0}
+        assert engine.evaluate(rule, ctx) is True
+
+        ctx2 = {"price": 67000.0, "bollinger_lower": 67500.0, "rsi": 35.0}
+        assert engine.evaluate(rule, ctx2) is False

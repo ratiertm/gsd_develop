@@ -2,6 +2,7 @@
 
 Evaluates CompositeRule trees against a context dict of indicator values.
 Supports 6 operators: gt, lt, gte, lte, cross_above, cross_below.
+Supports value_ref for indicator-to-indicator comparison.
 Missing indicator keys gracefully evaluate to False (warmup handling).
 """
 
@@ -36,6 +37,16 @@ class ConditionEngine:
         else:  # OR
             return any(results)
 
+    def _resolve_threshold(self, condition: Condition, context: dict) -> float | None:
+        """Resolve the comparison threshold from value or value_ref.
+
+        Returns None if value_ref references a missing context key (warmup).
+        """
+        if condition.value_ref:
+            val = context.get(condition.value_ref)
+            return val  # None if not in context
+        return condition.value
+
     def _eval_condition(self, condition: Condition, context: dict) -> bool:
         """Evaluate a single Condition against the context.
 
@@ -43,7 +54,10 @@ class ConditionEngine:
         """
         ind = condition.indicator
         op = condition.operator
-        threshold = condition.value
+
+        threshold = self._resolve_threshold(condition, context)
+        if threshold is None:
+            return False
 
         # Cross operators need both current and prev values
         if op in ("cross_above", "cross_below"):
@@ -51,10 +65,21 @@ class ConditionEngine:
                 return False
             current = context[ind]
             prev = context[f"{ind}_prev"]
-            if op == "cross_above":
-                return prev <= threshold and current > threshold
-            else:  # cross_below
-                return prev >= threshold and current < threshold
+
+            # For value_ref crosses, threshold also moves — use its prev value
+            if condition.value_ref:
+                threshold_prev = context.get(f"{condition.value_ref}_prev")
+                if threshold_prev is None:
+                    return False
+                if op == "cross_above":
+                    return prev <= threshold_prev and current > threshold
+                else:  # cross_below
+                    return prev >= threshold_prev and current < threshold
+            else:
+                if op == "cross_above":
+                    return prev <= threshold and current > threshold
+                else:  # cross_below
+                    return prev >= threshold and current < threshold
 
         # Standard comparison operators
         if ind not in context:

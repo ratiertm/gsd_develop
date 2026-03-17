@@ -60,7 +60,8 @@ def _parse_rule(rule_dict: dict) -> CompositeRule:
                 Condition(
                     indicator=item["indicator"],
                     operator=item["operator"],
-                    value=item["value"],
+                    value=item.get("value"),
+                    value_ref=item.get("value_ref"),
                 )
             )
     return CompositeRule(logic=rule_dict["logic"], conditions=conditions)
@@ -150,22 +151,37 @@ class StrategyManager:
         self._indicators[key] = instances
         return instances
 
-    def _update_indicator(self, ind_name: str, instance, candle: Candle) -> float | None:
+    # Sub-component names for tuple-returning indicators
+    _TUPLE_COMPONENTS: dict[type, list[str]] = {
+        BollingerBandsIndicator: ["upper", "middle", "lower"],
+        MACDIndicator: ["line", "signal", "histogram"],
+    }
+
+    def _update_indicator(
+        self, ind_name: str, instance, candle: Candle
+    ) -> tuple[float | None, dict[str, float]]:
         """Update an indicator instance with candle data.
 
-        Returns the current indicator value or None if warming up.
+        Returns:
+            (primary_value, sub_components) where sub_components maps
+            e.g. "bollinger_upper" -> value for tuple indicators.
         """
         if isinstance(instance, VWAPIndicator):
-            return instance.update_candle(candle.high, candle.low, candle.close, candle.volume)
+            val = instance.update_candle(candle.high, candle.low, candle.close, candle.volume)
+            return val, {}
         elif isinstance(instance, OBVIndicator):
-            return instance.update(candle.close, candle.volume)
+            val = instance.update(candle.close, candle.volume)
+            return val, {}
         else:
-            # SMA, EMA, RSI, MACD, Bollinger all use update(close)
             result = instance.update(candle.close)
-            # MACD and Bollinger return tuples; for condition evaluation we use the first element
             if isinstance(result, tuple):
-                return result[0]
-            return result
+                components = self._TUPLE_COMPONENTS.get(type(instance), [])
+                sub = {}
+                for i, comp_name in enumerate(components):
+                    if i < len(result):
+                        sub[f"{ind_name}_{comp_name}"] = result[i]
+                return result[0], sub
+            return result, {}
 
     def on_candle_complete(self, code: str, candle: Candle) -> list[Signal]:
         """Process a completed candle through all strategies assigned to this code.
@@ -195,12 +211,15 @@ class StrategyManager:
             indicators = self._init_indicators(strategy, code)
 
             # Update ALL indicators first (so none miss candle data during warmup)
-            current_values: dict[str, float | None] = {}
+            primary_values: dict[str, float | None] = {}
+            all_sub_components: dict[str, float] = {}
             for ind_name, instance in indicators.items():
-                current_values[ind_name] = self._update_indicator(ind_name, instance, candle)
+                primary, subs = self._update_indicator(ind_name, instance, candle)
+                primary_values[ind_name] = primary
+                all_sub_components.update(subs)
 
             # Check if any indicator is still warming up
-            if any(v is None for v in current_values.values()):
+            if any(v is None for v in primary_values.values()):
                 continue  # Warmup not complete
 
             # Build context with current and previous values
@@ -209,7 +228,7 @@ class StrategyManager:
                 "volume": float(candle.volume),
             }
 
-            for ind_name, current in current_values.items():
+            for ind_name, current in primary_values.items():
                 prev_key = (code, strat_name, ind_name)
                 prev = self._prev_values.get(prev_key)
 
@@ -220,16 +239,16 @@ class StrategyManager:
                 # Store current as next iteration's prev
                 self._prev_values[prev_key] = current
 
-            # For MA_CROSSOVER: transform EMA values to difference for cross detection
-            if "ema_short" in context and "ema_long" in context:
-                ema_diff = context["ema_short"] - context["ema_long"]
-                ema_diff_prev = None
-                if "ema_short_prev" in context and "ema_long_prev" in context:
-                    ema_diff_prev = context["ema_short_prev"] - context["ema_long_prev"]
+            # Register sub-components (e.g. bollinger_upper, macd_signal)
+            for sub_name, sub_val in all_sub_components.items():
+                prev_key = (code, strat_name, sub_name)
+                prev = self._prev_values.get(prev_key)
 
-                context["ema_short"] = ema_diff
-                if ema_diff_prev is not None:
-                    context["ema_short_prev"] = ema_diff_prev
+                context[sub_name] = sub_val
+                if prev is not None:
+                    context[f"{sub_name}_prev"] = prev
+
+                self._prev_values[prev_key] = sub_val
 
             # Evaluate entry and exit rules
             if self._condition_engine.evaluate(strategy.entry_rule, context):

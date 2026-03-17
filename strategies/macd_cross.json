@@ -1,0 +1,29 @@
+{
+  "strategy": {
+    "mode": "paper",
+    "strategies": [
+      {
+        "name": "MACD_SIGNAL_CROSS",
+        "enabled": true,
+        "priority": 20,
+        "cooldown_sec": 300,
+        "indicators": {
+          "macd": {"type": "macd", "fast": 12, "slow": 26, "signal": 9}
+        },
+        "entry_rule": {
+          "logic": "AND",
+          "conditions": [
+            {"indicator": "macd_line", "operator": "cross_above", "value_ref": "macd_signal"}
+          ]
+        },
+        "exit_rule": {
+          "logic": "AND",
+          "conditions": [
+            {"indicator": "macd_line", "operator": "cross_below", "value_ref": "macd_signal"}
+          ]
+        }
+      }
+    ],
+    "watchlist_strategies": {}
+  }
+}

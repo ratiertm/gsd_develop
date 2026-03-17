@@ -1,0 +1,33 @@
+{
+  "strategy": {
+    "mode": "paper",
+    "strategies": [
+      {
+        "name": "VWAP_BREAKOUT",
+        "enabled": true,
+        "priority": 12,
+        "cooldown_sec": 600,
+        "indicators": {
+          "vwap": {"type": "vwap"},
+          "ema_short": {"type": "ema", "period": 5},
+          "ema_long": {"type": "ema", "period": 20}
+        },
+        "entry_rule": {
+          "logic": "AND",
+          "conditions": [
+            {"indicator": "price", "operator": "cross_above", "value_ref": "vwap"},
+            {"indicator": "ema_short", "operator": "gt", "value_ref": "ema_long"}
+          ]
+        },
+        "exit_rule": {
+          "logic": "OR",
+          "conditions": [
+            {"indicator": "price", "operator": "cross_below", "value_ref": "vwap"},
+            {"indicator": "ema_short", "operator": "cross_below", "value_ref": "ema_long"}
+          ]
+        }
+      }
+    ],
+    "watchlist_strategies": {}
+  }
+}

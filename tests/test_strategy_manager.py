@@ -60,13 +60,13 @@ MA_STRATEGY_CONFIG = {
     "entry_rule": {
         "logic": "AND",
         "conditions": [
-            {"indicator": "ema_short", "operator": "cross_above", "value": 0.0},
+            {"indicator": "ema_short", "operator": "cross_above", "value_ref": "ema_long"},
         ],
     },
     "exit_rule": {
         "logic": "AND",
         "conditions": [
-            {"indicator": "ema_short", "operator": "cross_below", "value": 0.0},
+            {"indicator": "ema_short", "operator": "cross_below", "value_ref": "ema_long"},
         ],
     },
     "cooldown_sec": 300,

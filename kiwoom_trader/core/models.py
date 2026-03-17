@@ -120,11 +120,16 @@ class Candle:
 
 @dataclass
 class Condition:
-    """Single condition comparing an indicator value against a threshold."""
+    """Single condition comparing an indicator value against a threshold or another indicator.
 
-    indicator: str  # e.g. "rsi", "ema_short"
+    Either ``value`` (fixed threshold) or ``value_ref`` (indicator reference) must be set.
+    When ``value_ref`` is set, the threshold is resolved from the context dict at evaluation time.
+    """
+
+    indicator: str  # e.g. "rsi", "ema_short", "price", "macd_line"
     operator: str  # "gt", "lt", "gte", "lte", "cross_above", "cross_below"
-    value: float  # threshold value
+    value: float | None = None  # fixed threshold (mutually exclusive with value_ref)
+    value_ref: str | None = None  # indicator reference e.g. "ema_long", "bollinger_lower"
 
 
 @dataclass
