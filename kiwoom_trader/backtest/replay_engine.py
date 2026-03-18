@@ -76,6 +76,7 @@ class ReplayEngine:
         start_time: str | None = None,
         end_time: str | None = None,
         speed: float = 0,
+        prev_day_db: str | Path | None = None,
         on_progress: Callable[[int, int], None] | None = None,
         on_candle: Callable[[str, Candle], None] | None = None,
         on_signal: Callable[[Signal], None] | None = None,
@@ -117,14 +118,36 @@ class ReplayEngine:
             replay_date=replay_date,
         )
 
-        # Setup StrategyManager
+        # Setup StrategyManager (replay mode — signals handled by ReplayEngine, not PaperTrader)
         condition_engine = ConditionEngine()
+        replay_config = {**self._strategy_configs, "mode": "replay"}
         strategy_manager = StrategyManager(
             condition_engine=condition_engine,
             risk_manager=None,
             order_manager=None,
-            config=self._strategy_configs,
+            config=replay_config,
         )
+
+        # Load market context (prev day data + index)
+        if prev_day_db:
+            strategy_manager.market_context = self._load_prev_day_context(
+                Path(prev_day_db), codes
+            )
+            logger.info(
+                f"Market context loaded: {len(strategy_manager.market_context)} codes"
+            )
+
+        # Load index data (KOSPI/KOSDAQ) for _global context
+        # Default to 0.0 (market normal) when no index data available
+        index_defaults = {"kospi_pct": 0.0, "kosdaq_pct": 0.0}
+        index_data = self._load_index_data(db_path)
+        strategy_manager.market_context["_global"] = {**index_defaults, **index_data}
+        if index_data:
+            logger.info(
+                f"Index context loaded: {', '.join(f'{k}={v}' for k, v in index_data.items())}"
+            )
+        else:
+            logger.info("No index data in DB — using defaults (kospi_pct=0, kosdaq_pct=0)")
 
         # Candle handler: run strategy + trade logic on each completed candle
         def handle_candle(code: str, candle: Candle) -> None:
@@ -159,10 +182,19 @@ class ReplayEngine:
         logger.info(f"Replaying {total_ticks:,} ticks from {db_path.name}")
 
         tick_delay = 1.0 / speed if speed > 0 else 0
+        gap_calculated: set[str] = set()
 
         for i, (code, fid_dict) in enumerate(
             self._iter_ticks(db_path, codes, start_time, end_time)
         ):
+            # Calculate gap_pct on first tick per code
+            if prev_day_db and code not in gap_calculated:
+                price_str = fid_dict.get(10, "0")
+                first_price = abs(int(price_str.strip() or "0"))
+                if first_price > 0:
+                    self._inject_gap_pct(strategy_manager, code, float(first_price))
+                    gap_calculated.add(code)
+
             aggregator.on_tick(code, fid_dict)
             self._ticks_processed = i + 1
 
@@ -203,6 +235,130 @@ class ReplayEngine:
             f"return={result.total_return_pct:+.2f}%"
         )
         return result
+
+    # ── Market context loading ────────────────────────────────
+
+    def _load_prev_day_context(
+        self, prev_db: Path, codes: list[str] | None
+    ) -> dict[str, dict[str, float]]:
+        """Load previous day OHLCV from minute candle DB.
+
+        Returns market_context dict:
+          {"005930": {"prev_close": 188700, "prev_high": 189200, ...}}
+        """
+        if not prev_db.exists():
+            logger.warning(f"Prev day DB not found: {prev_db}")
+            return {}
+
+        conn = sqlite3.connect(str(prev_db))
+        try:
+            # Check if candles table exists
+            tables = [r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()]
+            if "candles" not in tables:
+                logger.warning(f"No 'candles' table in {prev_db}")
+                return {}
+
+            context: dict[str, dict[str, float]] = {}
+            query = "SELECT code, MAX(high) as h, MIN(low) as l, close, MAX(volume) as v FROM candles WHERE code=? ORDER BY datetime DESC LIMIT 1"
+
+            # Get distinct codes
+            if codes:
+                all_codes = codes
+            else:
+                all_codes = [r[0] for r in conn.execute(
+                    "SELECT DISTINCT code FROM candles"
+                ).fetchall()]
+
+            # Use only the latest date in the DB
+            last_date_row = conn.execute(
+                "SELECT MAX(substr(datetime,1,10)) FROM candles"
+            ).fetchone()
+            last_date = last_date_row[0] if last_date_row else None
+            if not last_date:
+                return {}
+            logger.info(f"Prev day date: {last_date}")
+
+            for code in all_codes:
+                # Get daily OHLCV for the latest date only
+                date_filter = f"code=? AND substr(datetime,1,10)=?"
+                row = conn.execute(
+                    "SELECT "
+                    f"  (SELECT open FROM candles WHERE {date_filter} ORDER BY datetime ASC LIMIT 1), "
+                    f"  (SELECT MAX(high) FROM candles WHERE {date_filter}), "
+                    f"  (SELECT MIN(low) FROM candles WHERE {date_filter}), "
+                    f"  (SELECT close FROM candles WHERE {date_filter} ORDER BY datetime DESC LIMIT 1), "
+                    f"  (SELECT SUM(volume) FROM candles WHERE {date_filter})",
+                    (code, last_date, code, last_date, code, last_date, code, last_date, code, last_date),
+                ).fetchone()
+
+                if row and row[3]:
+                    o, h, l, c = float(row[0] or 0), float(row[1] or 0), float(row[2] or 0), float(row[3])
+                    # Candle pattern metrics
+                    body_pct = (c - o) / o * 100 if o > 0 else 0  # +양봉 -음봉
+                    range_pct = (h - l) / l * 100 if l > 0 else 0
+                    upper_wick_pct = (h - max(o, c)) / l * 100 if l > 0 else 0
+                    lower_wick_pct = (min(o, c) - l) / l * 100 if l > 0 else 0
+
+                    context[code] = {
+                        "prev_open": o,
+                        "prev_high": h,
+                        "prev_low": l,
+                        "prev_close": c,
+                        "prev_volume": float(row[4] or 0),
+                        "prev_body_pct": round(body_pct, 2),
+                        "prev_range_pct": round(range_pct, 2),
+                        "prev_upper_wick_pct": round(upper_wick_pct, 2),
+                        "prev_lower_wick_pct": round(lower_wick_pct, 2),
+                    }
+
+            return context
+        finally:
+            conn.close()
+
+    def _inject_gap_pct(
+        self, strategy_manager, code: str, first_price: float
+    ) -> None:
+        """Calculate and inject gap_pct on first tick of a code."""
+        mc = strategy_manager.market_context.get(code, {})
+        prev_close = mc.get("prev_close")
+        if prev_close and prev_close > 0:
+            gap_pct = (first_price - prev_close) / prev_close * 100
+            mc["gap_pct"] = gap_pct
+            strategy_manager.market_context[code] = mc
+
+    def _load_index_data(self, db_path: Path) -> dict[str, float]:
+        """Load KOSPI/KOSDAQ index data from 업종지수 table if available.
+
+        Returns global context dict, e.g. {"kospi_pct": -0.5, "kosdaq_pct": 0.3}.
+        Uses the last recorded index tick's diff_rate (fid_12 = 등락률).
+        """
+        conn = sqlite3.connect(str(db_path))
+        try:
+            tables = [r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()]
+            if "업종지수" not in tables:
+                return {}
+
+            result: dict[str, float] = {}
+            index_map = {"001": "kospi_pct", "101": "kosdaq_pct"}
+
+            for idx_code, ctx_name in index_map.items():
+                row = conn.execute(
+                    "SELECT fid_12 FROM 업종지수 WHERE code=? ORDER BY timestamp DESC LIMIT 1",
+                    (idx_code,),
+                ).fetchone()
+                if row and row[0]:
+                    try:
+                        result[ctx_name] = float(row[0].strip())
+                    except (ValueError, AttributeError):
+                        pass
+
+            return result
+        finally:
+            conn.close()
 
     # ── Data loading ─────────────────────────────────────────
 

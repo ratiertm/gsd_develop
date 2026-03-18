@@ -8,21 +8,74 @@
         "priority": 15,
         "cooldown_sec": 300,
         "indicators": {
-          "bollinger": {"type": "bollinger", "period": 20, "num_std": 2.0},
-          "rsi": {"type": "rsi", "period": 14}
+          "bollinger": {
+            "type": "bollinger",
+            "period": 10,
+            "num_std": 2.5
+          },
+          "rsi": {
+            "type": "rsi",
+            "period": 7
+          }
         },
         "entry_rule": {
           "logic": "AND",
           "conditions": [
-            {"indicator": "price", "operator": "lt", "value_ref": "bollinger_lower"},
-            {"indicator": "rsi", "operator": "lt", "value": 30}
+            {
+              "indicator": "price",
+              "operator": "lt",
+              "value_ref": "bollinger_lower"
+            },
+            {
+              "indicator": "rsi",
+              "operator": "lt",
+              "value": 20
+            },
+            {
+              "indicator": "price",
+              "operator": "gt",
+              "value_ref": "prev_low"
+            },
+            {
+              "indicator": "gap_pct",
+              "operator": "gt",
+              "value": -2.0
+            },
+            {
+              "indicator": "hour",
+              "operator": "lt",
+              "value": 14
+            },
+            {
+              "indicator": "kospi_pct",
+              "operator": "gt",
+              "value": -1.0
+            },
+            {
+              "indicator": "prev_upper_wick_pct",
+              "operator": "lt",
+              "value": 3.0
+            }
           ]
         },
         "exit_rule": {
           "logic": "OR",
           "conditions": [
-            {"indicator": "price", "operator": "gt", "value_ref": "bollinger_middle"},
-            {"indicator": "rsi", "operator": "gt", "value": 80}
+            {
+              "indicator": "price",
+              "operator": "gt",
+              "value_ref": "bollinger_middle"
+            },
+            {
+              "indicator": "rsi",
+              "operator": "gt",
+              "value": 85
+            },
+            {
+              "indicator": "price",
+              "operator": "gt",
+              "value_ref": "prev_high"
+            }
           ]
         }
       }

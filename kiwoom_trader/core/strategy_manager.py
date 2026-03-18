@@ -99,6 +99,10 @@ class StrategyManager:
         # Cooldown tracking: (code, side) -> last signal timestamp
         self._cooldowns: dict[tuple[str, str], datetime] = {}
 
+        # Market context: external data injected into evaluation context
+        # e.g. {"005930": {"prev_close": 188700, "prev_high": 189200, ...}, "_global": {"kospi_pct": -0.5}}
+        self.market_context: dict[str, dict[str, float]] = {}
+
         # Paper trader (set externally or created internally)
         self.paper_trader: PaperTrader | None = None
 
@@ -226,6 +230,8 @@ class StrategyManager:
             context: dict[str, float] = {
                 "price": float(candle.close),
                 "volume": float(candle.volume),
+                "hour": float(candle.timestamp.hour),
+                "minute": float(candle.timestamp.minute),
             }
 
             for ind_name, current in primary_values.items():
@@ -249,6 +255,12 @@ class StrategyManager:
                     context[f"{sub_name}_prev"] = prev
 
                 self._prev_values[prev_key] = sub_val
+
+            # Inject market context (per-code + global)
+            if code in self.market_context:
+                context.update(self.market_context[code])
+            if "_global" in self.market_context:
+                context.update(self.market_context["_global"])
 
             # Evaluate entry and exit rules
             if self._condition_engine.evaluate(strategy.entry_rule, context):
@@ -317,6 +329,8 @@ class StrategyManager:
 
     def _execute_signal(self, signal: Signal) -> None:
         """Route signal to PaperTrader or RiskManager->OrderManager."""
+        if self._mode == "replay":
+            return  # ReplayEngine handles execution directly
         if self._mode == "paper":
             if self.paper_trader is not None:
                 self.paper_trader.execute_signal(signal)

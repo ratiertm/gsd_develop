@@ -40,6 +40,12 @@ WATCH_LIST = {
     "000660": "SK하이닉스",
 }
 
+# 시장 지수 (업종지수 실시간)
+INDEX_LIST = {
+    "001": "코스피",
+    "101": "코스닥",
+}
+
 COLLECT_TYPES = {
     "체결": {"real_type": "주식체결", "fids": REALTIME_FIDS["주식체결"]["fids"]},
     "호가": {"real_type": "주식호가잔량", "fids": REALTIME_FIDS["주식호가잔량"]["fids"]},
@@ -47,6 +53,8 @@ COLLECT_TYPES = {
     "시간외": {"real_type": "주식시간외체결", "fids": REALTIME_FIDS["주식시간외체결"]["fids"]},
     "종목정보": {"real_type": "주식종목정보", "fids": REALTIME_FIDS["주식종목정보"]["fids"]},
     "장시작": {"real_type": "장시작시간", "fids": REALTIME_FIDS["장시작시간"]["fids"]},
+    "업종지수": {"real_type": "업종지수", "fids": REALTIME_FIDS["업종지수"]["fids"]},
+    "업종등락": {"real_type": "업종등락", "fids": REALTIME_FIDS["업종등락"]["fids"]},
 }
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -286,11 +294,26 @@ class RealtimeCollector:
         fid_str = ";".join(str(f) for f in sorted(all_fids))
         self.api.set_real_reg("5000", codes, fid_str, "0")
         logger.info(f"실시간 등록: {list(WATCH_LIST.values())} | FID {len(all_fids)}개")
+
+        # 시장 지수 별도 화면으로 등록
+        if INDEX_LIST:
+            index_codes = ";".join(INDEX_LIST.keys())
+            index_fids = set()
+            for t in ["업종지수", "업종등락"]:
+                if t in self.active_types:
+                    index_fids.update(self.active_types[t]["fids"])
+            if index_fids:
+                idx_fid_str = ";".join(str(f) for f in sorted(index_fids))
+                self.api.set_real_reg("5001", index_codes, idx_fid_str, "0")
+                logger.info(f"지수 등록: {list(INDEX_LIST.values())} | FID {len(index_fids)}개")
+
         logger.info(f"수집 타입: {list(self.active_types.keys())}")
         logger.info("데이터 수신 대기중... (18시 자동 종료)")
 
     def _on_real_data(self, code, real_type, real_data):
-        if code not in WATCH_LIST:
+        # 종목 또는 지수 코드만 수신
+        all_known = {**WATCH_LIST, **INDEX_LIST}
+        if code not in all_known:
             return
 
         matched = None
@@ -310,14 +333,14 @@ class RealtimeCollector:
             fid_data[f"fid_{fid}"] = raw.strip() if raw else ""
 
         # CSV
-        row = {"timestamp": now, "code": code, "name": WATCH_LIST[code],
+        row = {"timestamp": now, "code": code, "name": all_known[code],
                "real_type": real_type, **fid_data}
         self.csv_writers[matched].writerow(row)
         self.tick_counts[matched] += 1
 
         # SQLite
         cols = ["timestamp", "code", "name", "real_type"] + [f"fid_{fid}" for fid in fids]
-        vals = [now, code, WATCH_LIST[code], real_type] + [fid_data[f"fid_{fid}"] for fid in fids]
+        vals = [now, code, all_known[code], real_type] + [fid_data[f"fid_{fid}"] for fid in fids]
         self.db_conn.execute(
             f"INSERT INTO {matched} ({','.join(cols)}) VALUES ({','.join(['?']*len(cols))})", vals
         )
@@ -329,7 +352,7 @@ class RealtimeCollector:
                 f.flush()
             self.db_conn.commit()
             price = fid_data.get(f"fid_{FID.CURRENT_PRICE}", "?")
-            logger.info(f"[{total}틱] {matched} | {WATCH_LIST[code]} 현재가={price}")
+            logger.info(f"[{total}틱] {matched} | {all_known[code]} 현재가={price}")
 
     def cleanup(self):
         for f in self.csv_files.values():

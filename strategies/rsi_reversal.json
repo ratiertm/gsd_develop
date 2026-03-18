@@ -3,14 +3,11 @@
     "mode": "paper",
     "strategies": [
       {
-        "name": "VWAP_BREAKOUT",
+        "name": "RSI_REVERSAL",
         "enabled": true,
-        "priority": 12,
-        "cooldown_sec": 600,
+        "priority": 10,
+        "cooldown_sec": 300,
         "indicators": {
-          "vwap": {
-            "type": "vwap"
-          },
           "rsi": {
             "type": "rsi",
             "period": 7
@@ -20,14 +17,9 @@
           "logic": "AND",
           "conditions": [
             {
-              "indicator": "price",
-              "operator": "cross_above",
-              "value_ref": "vwap"
-            },
-            {
               "indicator": "rsi",
-              "operator": "gt",
-              "value": 50
+              "operator": "lt",
+              "value": 20
             },
             {
               "indicator": "price",
@@ -36,8 +28,8 @@
             },
             {
               "indicator": "gap_pct",
-              "operator": "lt",
-              "value": 2.0
+              "operator": "gt",
+              "value": -2.0
             },
             {
               "indicator": "hour",
@@ -50,20 +42,15 @@
               "value": -1.0
             },
             {
-              "indicator": "prev_body_pct",
-              "operator": "gt",
-              "value": 0
+              "indicator": "prev_upper_wick_pct",
+              "operator": "lt",
+              "value": 3.0
             }
           ]
         },
         "exit_rule": {
           "logic": "OR",
           "conditions": [
-            {
-              "indicator": "price",
-              "operator": "cross_below",
-              "value_ref": "vwap"
-            },
             {
               "indicator": "rsi",
               "operator": "gt",

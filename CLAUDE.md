@@ -90,6 +90,9 @@ python -m pytest tests/ -x -q --ignore=tests/test_live_order.py
 - ConditionEngine: `value`(고정값) 또는 `value_ref`(인디케이터 참조) 중 하나로 비교
 - 튜플 인디케이터 서브컴포넌트: `bollinger_upper/middle/lower`, `macd_line/signal/histogram`
 - 전략 설정 JSON: `docs/condition-engine-enhancement-spec.md` 참조
+- market_context: 전일 OHLCV/패턴(`prev_close`, `prev_body_pct` 등) + 시장 지수(`kospi_pct`)
+- context 내장 키: `price`, `volume`, `hour`, `minute` + 인디케이터 + 서브컴포넌트 + 전일 + 시장
+- 전략 시뮬레이션 결과/비용 분석: `docs/strategy-simulation-review.md`
 - chejan = 체결/잔고. `OnReceiveChejanData`의 gubun=0은 체결, gubun=1은 잔고
 - 주문번호 매핑: submit_order()는 임시번호(ORD_*), chejan에서 실제 거래소 번호로 전환
 - OrderManager는 `threading.RLock`으로 chejan 이벤트 동시 접근 보호
@@ -124,12 +127,16 @@ python -m pytest tests/ -x -q --ignore=tests/test_live_order.py
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 11 | ConditionEngine value_ref — 인디케이터 간 비교 지원 | 설계 완료 |
-| 12 | 튜플 인디케이터 서브컴포넌트 (Bollinger/MACD) | 설계 완료 |
+| 11 | ConditionEngine value_ref — 인디케이터 간 비교 지원 | Complete |
+| 12 | 튜플 인디케이터 서브컴포넌트 (Bollinger/MACD) | Complete |
 | 13 | GUI 전략 편집기 value_ref 지원 | Planned |
-| 14 | 레퍼런스 전략 (볼린저, MACD 크로스, VWAP) | Planned |
+| 14 | 레퍼런스 전략 (볼린저, MACD 크로스, VWAP) | Complete |
+| 15 | 시장 컨텍스트 (전일 데이터 + 지수 필터) | Complete |
+| 16 | 전략 시뮬레이션 검토 (6종 전략, 봉 간격, 비용 분석) | Complete |
 
-**설계 문서:** `docs/condition-engine-enhancement-spec.md`
+**설계 문서:**
+- `docs/condition-engine-enhancement-spec.md` — value_ref 설계
+- `docs/strategy-simulation-review.md` — 전략 시뮬레이션 검토 (비용/필터/봉 간격/일봉 패턴)
 
 ## Testing Notes
 

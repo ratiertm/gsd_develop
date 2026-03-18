@@ -3,31 +3,51 @@
     "mode": "paper",
     "strategies": [
       {
-        "name": "VWAP_BREAKOUT",
+        "name": "MA_CROSSOVER",
         "enabled": true,
-        "priority": 12,
-        "cooldown_sec": 600,
+        "priority": 1,
+        "cooldown_sec": 300,
         "indicators": {
-          "vwap": {
-            "type": "vwap"
+          "ema_short": {
+            "type": "ema",
+            "period": 3
+          },
+          "ema_long": {
+            "type": "ema",
+            "period": 10
           },
           "rsi": {
             "type": "rsi",
             "period": 7
+          },
+          "bollinger": {
+            "type": "bollinger",
+            "period": 10,
+            "num_std": 2.0
           }
         },
         "entry_rule": {
           "logic": "AND",
           "conditions": [
             {
-              "indicator": "price",
+              "indicator": "ema_short",
               "operator": "cross_above",
-              "value_ref": "vwap"
+              "value_ref": "ema_long"
+            },
+            {
+              "indicator": "rsi",
+              "operator": "lt",
+              "value": 65
             },
             {
               "indicator": "rsi",
               "operator": "gt",
-              "value": 50
+              "value": 35
+            },
+            {
+              "indicator": "price",
+              "operator": "gt",
+              "value_ref": "bollinger_middle"
             },
             {
               "indicator": "price",
@@ -52,7 +72,7 @@
             {
               "indicator": "prev_body_pct",
               "operator": "gt",
-              "value": 0
+              "value": 0.5
             }
           ]
         },
@@ -60,9 +80,9 @@
           "logic": "OR",
           "conditions": [
             {
-              "indicator": "price",
+              "indicator": "ema_short",
               "operator": "cross_below",
-              "value_ref": "vwap"
+              "value_ref": "ema_long"
             },
             {
               "indicator": "rsi",

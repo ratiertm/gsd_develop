@@ -3,56 +3,51 @@
     "mode": "paper",
     "strategies": [
       {
-        "name": "VWAP_BREAKOUT",
+        "name": "GAP_REVERSAL",
         "enabled": true,
-        "priority": 12,
+        "priority": 18,
         "cooldown_sec": 600,
         "indicators": {
-          "vwap": {
-            "type": "vwap"
-          },
           "rsi": {
             "type": "rsi",
             "period": 7
+          },
+          "vwap": {
+            "type": "vwap"
           }
         },
         "entry_rule": {
           "logic": "AND",
           "conditions": [
             {
+              "indicator": "gap_pct",
+              "operator": "lt",
+              "value": -1.0
+            },
+            {
               "indicator": "price",
               "operator": "cross_above",
-              "value_ref": "vwap"
-            },
-            {
-              "indicator": "rsi",
-              "operator": "gt",
-              "value": 50
-            },
-            {
-              "indicator": "price",
-              "operator": "gt",
               "value_ref": "prev_low"
             },
             {
-              "indicator": "gap_pct",
+              "indicator": "rsi",
               "operator": "lt",
-              "value": 2.0
+              "value": 40
+            },
+            {
+              "indicator": "hour",
+              "operator": "gte",
+              "value": 9
             },
             {
               "indicator": "hour",
               "operator": "lt",
-              "value": 14
+              "value": 11
             },
             {
               "indicator": "kospi_pct",
               "operator": "gt",
               "value": -1.0
-            },
-            {
-              "indicator": "prev_body_pct",
-              "operator": "gt",
-              "value": 0
             }
           ]
         },
@@ -61,18 +56,18 @@
           "conditions": [
             {
               "indicator": "price",
-              "operator": "cross_below",
-              "value_ref": "vwap"
+              "operator": "gt",
+              "value_ref": "prev_close"
             },
             {
               "indicator": "rsi",
               "operator": "gt",
-              "value": 80
+              "value": 70
             },
             {
-              "indicator": "price",
-              "operator": "gt",
-              "value_ref": "prev_high"
+              "indicator": "hour",
+              "operator": "gte",
+              "value": 14
             }
           ]
         }

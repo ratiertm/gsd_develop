@@ -140,12 +140,16 @@ docs/           설계 문서
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 11 | ConditionEngine value_ref (인디케이터 간 비교) | 설계 완료 |
-| 12 | 튜플 인디케이터 서브컴포넌트 (Bollinger/MACD) | 설계 완료 |
+| 11 | ConditionEngine value_ref (인디케이터 간 비교) | Complete |
+| 12 | 튜플 인디케이터 서브컴포넌트 (Bollinger/MACD) | Complete |
 | 13 | GUI 전략 편집기 value_ref 지원 | Planned |
-| 14 | 레퍼런스 전략 (볼린저, MACD, VWAP) | Planned |
+| 14 | 레퍼런스 전략 (볼린저, MACD, VWAP) | Complete |
+| 15 | 시장 컨텍스트 (전일 데이터 + 지수 필터) | Complete |
+| 16 | 전략 시뮬레이션 검토 (6종 전략, 비용 분석) | Complete |
 
-설계 문서: [`docs/condition-engine-enhancement-spec.md`](docs/condition-engine-enhancement-spec.md)
+설계 문서:
+- [`docs/condition-engine-enhancement-spec.md`](docs/condition-engine-enhancement-spec.md) — value_ref 설계
+- [`docs/strategy-simulation-review.md`](docs/strategy-simulation-review.md) — 전략 시뮬레이션 검토
 
 ## License
 

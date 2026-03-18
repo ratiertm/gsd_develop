@@ -42,39 +42,17 @@ def load_config(config_path: Path) -> dict:
     return {}
 
 
+DEFAULT_STRATEGY_PATH = Path(__file__).resolve().parent.parent / "strategies" / "ma_crossover.json"
+
+
 def build_default_strategy_configs() -> dict:
-    """Build a simple MA crossover strategy for replay testing."""
-    return {
-        "mode": "paper",
-        "strategies": [
-            {
-                "name": "MA_CROSSOVER",
-                "enabled": True,
-                "priority": 1,
-                "indicators": {
-                    "ema_short": {"type": "ema", "period": 5},
-                    "ema_long": {"type": "ema", "period": 20},
-                    "rsi": {"type": "rsi", "period": 14},
-                },
-                "entry_rule": {
-                    "logic": "AND",
-                    "conditions": [
-                        {"indicator": "ema_short", "operator": "cross_above", "value_ref": "ema_long"},
-                        {"indicator": "rsi", "operator": "lt", "value": 70},
-                    ],
-                },
-                "exit_rule": {
-                    "logic": "OR",
-                    "conditions": [
-                        {"indicator": "ema_short", "operator": "cross_below", "value_ref": "ema_long"},
-                        {"indicator": "rsi", "operator": "gt", "value": 80},
-                    ],
-                },
-                "cooldown_sec": 300,
-            }
-        ],
-        "watchlist_strategies": {},  # Will be populated dynamically
-    }
+    """Load default strategy from strategies/ma_crossover.json."""
+    if DEFAULT_STRATEGY_PATH.exists():
+        config = load_config(DEFAULT_STRATEGY_PATH)
+        return config.get("strategy", {})
+    # Fallback if file missing
+    logger.warning(f"Default strategy not found: {DEFAULT_STRATEGY_PATH}")
+    return {"mode": "paper", "strategies": [], "watchlist_strategies": {}}
 
 
 def print_result(result, ticks: int, candles: int) -> None:
@@ -119,6 +97,8 @@ def main():
     parser.add_argument("--capital", type=int, default=10_000_000, help="Initial capital (default: 10M)")
     parser.add_argument("--interval", type=int, default=1, help="Candle interval minutes (default: 1)")
     parser.add_argument("--config", help="Path to config.json for strategy settings")
+    parser.add_argument("--prev-day", help="Path to prev day minute candle DB for market context")
+    parser.add_argument("--slippage", type=float, default=5.0, help="Slippage in basis points (default: 5.0, 0=limit order)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
 
     args = parser.parse_args()
@@ -158,7 +138,7 @@ def main():
     engine = ReplayEngine(
         strategy_configs=strategy_configs,
         risk_config=RiskConfig(),
-        cost_config=CostConfig(),
+        cost_config=CostConfig(slippage_bp=args.slippage),
         initial_capital=args.capital,
         candle_interval=args.interval,
     )
@@ -176,6 +156,8 @@ def main():
         print(f"  Codes: {', '.join(codes)}")
     if args.start or args.end:
         print(f"  Time: {args.start or 'start'} ~ {args.end or 'end'}")
+    if args.prev_day:
+        print(f"  Prev day: {args.prev_day}")
 
     # Run
     result = engine.run(
@@ -183,6 +165,7 @@ def main():
         codes=codes,
         start_time=args.start,
         end_time=args.end,
+        prev_day_db=args.prev_day,
         on_progress=show_progress,
     )
 

@@ -8,18 +8,95 @@
         "priority": 20,
         "cooldown_sec": 300,
         "indicators": {
-          "macd": {"type": "macd", "fast": 12, "slow": 26, "signal": 9}
+          "macd": {
+            "type": "macd",
+            "fast": 6,
+            "slow": 13,
+            "signal": 5
+          },
+          "rsi": {
+            "type": "rsi",
+            "period": 7
+          },
+          "bollinger": {
+            "type": "bollinger",
+            "period": 10,
+            "num_std": 2.0
+          }
         },
         "entry_rule": {
           "logic": "AND",
           "conditions": [
-            {"indicator": "macd_line", "operator": "cross_above", "value_ref": "macd_signal"}
+            {
+              "indicator": "macd_line",
+              "operator": "cross_above",
+              "value_ref": "macd_signal"
+            },
+            {
+              "indicator": "macd_histogram",
+              "operator": "gt",
+              "value": 0
+            },
+            {
+              "indicator": "rsi",
+              "operator": "gt",
+              "value": 35
+            },
+            {
+              "indicator": "rsi",
+              "operator": "lt",
+              "value": 65
+            },
+            {
+              "indicator": "price",
+              "operator": "gt",
+              "value_ref": "bollinger_middle"
+            },
+            {
+              "indicator": "price",
+              "operator": "gt",
+              "value_ref": "prev_low"
+            },
+            {
+              "indicator": "gap_pct",
+              "operator": "lt",
+              "value": 2.0
+            },
+            {
+              "indicator": "hour",
+              "operator": "lt",
+              "value": 14
+            },
+            {
+              "indicator": "kospi_pct",
+              "operator": "gt",
+              "value": -1.0
+            },
+            {
+              "indicator": "prev_body_pct",
+              "operator": "gt",
+              "value": 0.5
+            }
           ]
         },
         "exit_rule": {
-          "logic": "AND",
+          "logic": "OR",
           "conditions": [
-            {"indicator": "macd_line", "operator": "cross_below", "value_ref": "macd_signal"}
+            {
+              "indicator": "macd_line",
+              "operator": "cross_below",
+              "value_ref": "macd_signal"
+            },
+            {
+              "indicator": "rsi",
+              "operator": "gt",
+              "value": 80
+            },
+            {
+              "indicator": "price",
+              "operator": "gt",
+              "value_ref": "prev_high"
+            }
           ]
         }
       }
