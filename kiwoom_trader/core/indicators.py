@@ -223,3 +223,131 @@ class OBVIndicator:
                 self._obv -= volume
         self._prev_close = close
         return self._obv
+
+
+class ATRIndicator:
+    """Average True Range — measures volatility.
+
+    Uses Wilder's smoothing (EMA with alpha=1/period).
+
+    Args:
+        period: Smoothing period (default 14).
+    """
+
+    def __init__(self, period: int = 14) -> None:
+        self._period = period
+        self._prev_close: float | None = None
+        self._atr: float | None = None
+        self._count = 0
+
+    def update_candle(self, high: float, low: float, close: float, volume: int = 0) -> float | None:
+        """Update with OHLC data. Returns ATR or None during warmup."""
+        if self._prev_close is None:
+            self._prev_close = close
+            return None
+
+        # True Range = max(H-L, |H-prevC|, |L-prevC|)
+        tr = max(high - low, abs(high - self._prev_close), abs(low - self._prev_close))
+        self._prev_close = close
+        self._count += 1
+
+        if self._atr is None:
+            if self._count < self._period:
+                # Accumulate for initial average
+                if not hasattr(self, "_tr_sum"):
+                    self._tr_sum = 0.0
+                self._tr_sum += tr
+                return None
+            else:
+                # First ATR = simple average of first N true ranges
+                self._tr_sum += tr
+                self._atr = self._tr_sum / self._period
+                del self._tr_sum
+        else:
+            # Wilder's smoothing: ATR = (prev_ATR * (N-1) + TR) / N
+            self._atr = (self._atr * (self._period - 1) + tr) / self._period
+
+        return self._atr
+
+
+class ADXIndicator:
+    """Average Directional Index — measures trend strength.
+
+    Components: +DI, -DI, ADX.
+    ADX > 25 = strong trend, ADX < 20 = no trend (sideways).
+
+    Args:
+        period: Smoothing period (default 14).
+
+    Returns:
+        Tuple of (adx, plus_di, minus_di) or None during warmup.
+    """
+
+    def __init__(self, period: int = 14) -> None:
+        self._period = period
+        self._prev_high: float | None = None
+        self._prev_low: float | None = None
+        self._prev_close: float | None = None
+        self._smoothed_plus_dm = 0.0
+        self._smoothed_minus_dm = 0.0
+        self._smoothed_tr = 0.0
+        self._dx_values: deque[float] = deque(maxlen=period)
+        self._adx: float | None = None
+        self._count = 0
+
+    def update_candle(self, high: float, low: float, close: float, volume: int = 0) -> tuple[float, float, float] | None:
+        """Update with OHLC data. Returns (ADX, +DI, -DI) or None during warmup."""
+        if self._prev_high is None:
+            self._prev_high = high
+            self._prev_low = low
+            self._prev_close = close
+            return None
+
+        # Directional Movement
+        plus_dm = max(high - self._prev_high, 0) if (high - self._prev_high) > (self._prev_low - low) else 0
+        minus_dm = max(self._prev_low - low, 0) if (self._prev_low - low) > (high - self._prev_high) else 0
+
+        # True Range
+        tr = max(high - low, abs(high - self._prev_close), abs(low - self._prev_close))
+
+        self._prev_high = high
+        self._prev_low = low
+        self._prev_close = close
+        self._count += 1
+
+        if self._count <= self._period:
+            # Accumulate initial sums
+            self._smoothed_plus_dm += plus_dm
+            self._smoothed_minus_dm += minus_dm
+            self._smoothed_tr += tr
+            if self._count < self._period:
+                return None
+            # First smoothed values = sum of first N
+        else:
+            # Wilder's smoothing
+            self._smoothed_plus_dm = self._smoothed_plus_dm - (self._smoothed_plus_dm / self._period) + plus_dm
+            self._smoothed_minus_dm = self._smoothed_minus_dm - (self._smoothed_minus_dm / self._period) + minus_dm
+            self._smoothed_tr = self._smoothed_tr - (self._smoothed_tr / self._period) + tr
+
+        # +DI and -DI
+        if self._smoothed_tr == 0:
+            return None
+        plus_di = 100 * self._smoothed_plus_dm / self._smoothed_tr
+        minus_di = 100 * self._smoothed_minus_dm / self._smoothed_tr
+
+        # DX
+        di_sum = plus_di + minus_di
+        dx = 100 * abs(plus_di - minus_di) / di_sum if di_sum > 0 else 0
+
+        self._dx_values.append(dx)
+
+        if len(self._dx_values) < self._period:
+            return None
+
+        # ADX
+        if self._adx is None:
+            self._adx = sum(self._dx_values) / self._period
+        else:
+            self._adx = (self._adx * (self._period - 1) + dx) / self._period
+
+        return (self._adx, plus_di, minus_di)

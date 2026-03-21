@@ -399,7 +399,7 @@ def main():
         dashboard._on_mode_change = _on_mode_change
 
         # --- Wire simulation button ---
-        def _on_sim_requested(date_str, interval, speed):
+        def _on_sim_requested(date_str, interval, speed, day_strategy=None):
             """Handle simulation request from Dashboard button."""
             from pathlib import Path
             data_dir = Path(__file__).resolve().parent.parent / "data"
@@ -424,19 +424,21 @@ def main():
                 if same.exists():
                     prev_day_db = same
 
+            strat_label = day_strategy or "config"
             dashboard.update_status(
                 connected=True, market_state="SIMULATION",
                 strategy_count=len(strategy_manager.strategies) if strategy_manager else 0,
                 mode="replay",
             )
             main_window._status_bar.showMessage(
-                f"SIMULATION | {date_str} | {interval}분봉"
+                f"SIMULATION | {date_str} | {interval}분봉 | {strat_label}"
             )
 
             _launch_simulation(
                 str(replay_db), str(prev_day_db) if prev_day_db else None,
                 interval, speed, slippage=0,
-                title=f"시뮬레이션: {date_str}",
+                title=f"시뮬레이션: {date_str} ({strat_label})",
+                day_strategy=day_strategy,
             )
 
         dashboard._on_sim_requested = _on_sim_requested
@@ -789,7 +791,7 @@ def main():
         session_manager.start_monitoring()
 
     # === Shared simulation launcher (used by CLI --replay and Dashboard button) ===
-    def _launch_simulation(replay_db_path, prev_day_path, interval, speed, slippage=0, title="Replay"):
+    def _launch_simulation(replay_db_path, prev_day_path, interval, speed, slippage=0, title="Replay", day_strategy=None):
         """Launch a replay simulation with thread-safe UI updates."""
         from pathlib import Path
         from PyQt5.QtCore import pyqtSignal, QObject
@@ -800,13 +802,37 @@ def main():
 
         replay_db = Path(replay_db_path)
 
+        # Build day trading strategies if requested
+        day_strats = []
+        if day_strategy:
+            from kiwoom_trader.core.day_strategies import (
+                ORBStrategy, VWAPBounceStrategy, PrevDayBreakoutStrategy,
+                GapStrategy, OrderFlowStrategy,
+            )
+            DAY_MAP = {
+                "ORB": ORBStrategy, "VWAP_BOUNCE": VWAPBounceStrategy,
+                "PREV_DAY_BRK": PrevDayBreakoutStrategy,
+                "GAP_TRADE": GapStrategy, "ORDER_FLOW": OrderFlowStrategy,
+            }
+            if day_strategy == "ALL":
+                day_strats = [cls() for cls in DAY_MAP.values()]
+            elif day_strategy in DAY_MAP:
+                day_strats = [DAY_MAP[day_strategy]()]
+
+        # When using day strategies, disable config-based strategies to avoid conflict
+        strat_config = {**settings.strategy_config, "mode": "replay"}
+        if day_strats:
+            strat_config["strategies"] = []
+            strat_config["watchlist_strategies"] = {}
+
         # Build engine
         sim_engine = ReplayEngine(
-            strategy_configs={**settings.strategy_config, "mode": "replay"},
+            strategy_configs=strat_config,
             risk_config=settings.risk_config,
             cost_config=CostConfig(slippage_bp=slippage),
             initial_capital=settings._config.get("total_capital", 10_000_000),
             candle_interval=interval,
+            day_strategies=day_strats,
         )
 
         # Thread-safe bridge: worker stores data, main thread polls via QTimer

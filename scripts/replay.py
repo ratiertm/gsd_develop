@@ -99,6 +99,7 @@ def main():
     parser.add_argument("--config", help="Path to config.json for strategy settings")
     parser.add_argument("--prev-day", help="Path to prev day minute candle DB for market context")
     parser.add_argument("--slippage", type=float, default=5.0, help="Slippage in basis points (default: 5.0, 0=limit order)")
+    parser.add_argument("--day-strategy", help="Day trading strategy: ORB, VWAP_BOUNCE, PREV_DAY_BRK, GAP_TRADE, ORDER_FLOW, ALL")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
 
     args = parser.parse_args()
@@ -134,6 +135,31 @@ def main():
             code: strategy_names for code in all_codes
         }
 
+    # Day trading strategies
+    day_strats = []
+    if args.day_strategy:
+        from kiwoom_trader.core.day_strategies import (
+            ORBStrategy, VWAPBounceStrategy, PrevDayBreakoutStrategy,
+            GapStrategy, OrderFlowStrategy,
+        )
+        DAY_STRATEGY_MAP = {
+            "ORB": ORBStrategy,
+            "VWAP_BOUNCE": VWAPBounceStrategy,
+            "PREV_DAY_BRK": PrevDayBreakoutStrategy,
+            "GAP_TRADE": GapStrategy,
+            "ORDER_FLOW": OrderFlowStrategy,
+        }
+        if args.day_strategy.upper() == "ALL":
+            day_strats = [cls() for cls in DAY_STRATEGY_MAP.values()]
+        elif args.day_strategy.upper() in DAY_STRATEGY_MAP:
+            day_strats = [DAY_STRATEGY_MAP[args.day_strategy.upper()]()]
+        else:
+            logger.warning(f"Unknown day strategy: {args.day_strategy}")
+
+    # When using day strategies, disable config-based strategies
+    if day_strats:
+        strategy_configs = {"mode": "replay", "strategies": [], "watchlist_strategies": {}}
+
     # Build engine
     engine = ReplayEngine(
         strategy_configs=strategy_configs,
@@ -141,6 +167,7 @@ def main():
         cost_config=CostConfig(slippage_bp=args.slippage),
         initial_capital=args.capital,
         candle_interval=args.interval,
+        day_strategies=day_strats,
     )
 
     # Progress display

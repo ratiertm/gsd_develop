@@ -368,7 +368,13 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
         self._sim_speed_combo = QComboBox()
         self._sim_speed_combo.addItems(["최대속도", "빠르게", "보통(1봉/초)", "천천히(1봉/3초)"])
         self._sim_speed_combo.setCurrentIndex(2)
+        self._sim_day_strategy_combo = QComboBox()
+        self._sim_day_strategy_combo.addItems([
+            "기본전략(config)", "ORB", "VWAP_BOUNCE", "PREV_DAY_BRK",
+            "GAP_TRADE", "ORDER_FLOW", "전체(ALL)",
+        ])
         sf.addRow("날짜:", self._sim_date_edit)
+        sf.addRow("전략:", self._sim_day_strategy_combo)
         sf.addRow("봉:", self._sim_interval_combo)
         sf.addRow("속도:", self._sim_speed_combo)
         sf_w = QWidget()
@@ -679,8 +685,18 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
         self._lbl_daily_pnl.setText("0")
         self._lbl_daily_pnl.setStyleSheet("")
 
+        # Day strategy selection
+        day_strat_text = self._sim_day_strategy_combo.currentText()
+        day_strat_map = {
+            "기본전략(config)": None,
+            "ORB": "ORB", "VWAP_BOUNCE": "VWAP_BOUNCE",
+            "PREV_DAY_BRK": "PREV_DAY_BRK", "GAP_TRADE": "GAP_TRADE",
+            "ORDER_FLOW": "ORDER_FLOW", "전체(ALL)": "ALL",
+        }
+        day_strategy = day_strat_map.get(day_strat_text)
+
         if self._on_sim_requested:
-            self._on_sim_requested(date_str, interval, speed)
+            self._on_sim_requested(date_str, interval, speed, day_strategy)
         else:
             QMessageBox.warning(self, "시뮬레이션", "시뮬레이션 엔진이 연결되지 않았습니다.")
 

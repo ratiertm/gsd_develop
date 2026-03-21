@@ -15,6 +15,8 @@ from loguru import logger
 from kiwoom_trader.config.constants import HogaGb
 from kiwoom_trader.core.condition_engine import ConditionEngine
 from kiwoom_trader.core.indicators import (
+    ADXIndicator,
+    ATRIndicator,
     BollingerBandsIndicator,
     EMAIndicator,
     MACDIndicator,
@@ -45,6 +47,8 @@ INDICATOR_CLASSES: dict[str, type] = {
     "bollinger": BollingerBandsIndicator,
     "vwap": VWAPIndicator,
     "obv": OBVIndicator,
+    "atr": ATRIndicator,
+    "adx": ADXIndicator,
 }
 
 
@@ -159,6 +163,7 @@ class StrategyManager:
     _TUPLE_COMPONENTS: dict[type, list[str]] = {
         BollingerBandsIndicator: ["upper", "middle", "lower"],
         MACDIndicator: ["line", "signal", "histogram"],
+        ADXIndicator: ["adx", "plus_di", "minus_di"],
     }
 
     def _update_indicator(
@@ -170,9 +175,16 @@ class StrategyManager:
             (primary_value, sub_components) where sub_components maps
             e.g. "bollinger_upper" -> value for tuple indicators.
         """
-        if isinstance(instance, VWAPIndicator):
-            val = instance.update_candle(candle.high, candle.low, candle.close, candle.volume)
-            return val, {}
+        if isinstance(instance, (VWAPIndicator, ATRIndicator, ADXIndicator)):
+            result = instance.update_candle(candle.high, candle.low, candle.close, candle.volume)
+            if isinstance(result, tuple):
+                components = self._TUPLE_COMPONENTS.get(type(instance), [])
+                sub = {}
+                for i, comp_name in enumerate(components):
+                    if i < len(result):
+                        sub[f"{ind_name}_{comp_name}"] = result[i]
+                return result[0] if result else None, sub
+            return result, {}
         elif isinstance(instance, OBVIndicator):
             val = instance.update(candle.close, candle.volume)
             return val, {}

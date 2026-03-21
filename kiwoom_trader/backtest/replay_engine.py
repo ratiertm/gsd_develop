@@ -53,12 +53,14 @@ class ReplayEngine:
         cost_config: CostConfig | None = None,
         initial_capital: int = 10_000_000,
         candle_interval: int = 1,
+        day_strategies: list | None = None,
     ) -> None:
         self._strategy_configs = strategy_configs
         self._risk_config = risk_config or RiskConfig()
         self._cost_config = cost_config or CostConfig()
         self._initial_capital = initial_capital
         self._candle_interval = candle_interval
+        self._day_strategies = day_strategies or []
 
         # Per-run state
         self._capital: float = 0.0
@@ -136,6 +138,15 @@ class ReplayEngine:
             logger.info(
                 f"Market context loaded: {len(strategy_manager.market_context)} codes"
             )
+            # Inject prev day data into day_strategies
+            for ds in self._day_strategies:
+                for code_key, ctx in strategy_manager.market_context.items():
+                    if code_key.startswith("_"):
+                        continue
+                    if hasattr(ds, "set_prev_day"):
+                        ds.set_prev_day(code_key, ctx.get("prev_high", 0), ctx.get("prev_low", 0))
+                    if hasattr(ds, "set_prev_close"):
+                        ds.set_prev_close(code_key, ctx.get("prev_close", 0))
 
         # Load index data (KOSPI/KOSDAQ) for _global context
         # Default to 0.0 (market normal) when no index data available
@@ -180,6 +191,31 @@ class ReplayEngine:
                     if on_signal:
                         on_signal(sig)
                     self._execute_sell(sig.code, sig.price, sig.reason, candle)
+
+            # Day trading strategies
+            for ds in self._day_strategies:
+                day_sigs = ds.on_candle(code, candle)
+                for dsig in day_sigs:
+                    # Convert DaySignal to Signal-like for on_signal callback
+                    if on_signal:
+                        _ds = Signal(
+                            code=dsig.code, side=dsig.side, strategy_name=dsig.strategy,
+                            priority=50, price=dsig.price, timestamp=dsig.timestamp,
+                            reason=dsig.reason,
+                        )
+                        on_signal(_ds)
+                    if dsig.side == "BUY" and dsig.code not in bought_this_candle:
+                        if not self._check_daily_loss(candle.timestamp.date()):
+                            _sig = Signal(
+                                code=dsig.code, side="BUY", strategy_name=dsig.strategy,
+                                priority=50, price=dsig.price, timestamp=dsig.timestamp,
+                                reason=dsig.reason,
+                            )
+                            self._execute_buy(_sig, candle)
+                            bought_this_candle.add(dsig.code)
+                    elif dsig.side == "SELL":
+                        if dsig.code not in bought_this_candle:
+                            self._execute_sell(dsig.code, dsig.price, dsig.reason, candle)
 
             # Risk triggers (also skip codes bought this candle)
             self._check_risk_triggers(candle, skip_codes=bought_this_candle)

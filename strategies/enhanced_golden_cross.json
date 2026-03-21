@@ -1,0 +1,38 @@
+{
+  "strategy": {
+    "mode": "paper",
+    "strategies": [
+      {
+        "name": "ENHANCED_GOLDEN_CROSS",
+        "enabled": true,
+        "priority": 15,
+        "cooldown_sec": 600,
+        "indicators": {
+          "ema_short": {"type": "ema", "period": 5},
+          "ema_long": {"type": "ema", "period": 20},
+          "rsi": {"type": "rsi", "period": 14},
+          "adx": {"type": "adx", "period": 14},
+          "atr": {"type": "atr", "period": 14}
+        },
+        "entry_rule": {
+          "logic": "AND",
+          "conditions": [
+            {"indicator": "ema_short", "operator": "cross_above", "value_ref": "ema_long"},
+            {"indicator": "adx_adx", "operator": "gt", "value": 20},
+            {"indicator": "rsi", "operator": "lt", "value": 70},
+            {"indicator": "rsi", "operator": "gt", "value": 30},
+            {"indicator": "hour", "operator": "lt", "value": 14}
+          ]
+        },
+        "exit_rule": {
+          "logic": "OR",
+          "conditions": [
+            {"indicator": "ema_short", "operator": "cross_below", "value_ref": "ema_long"},
+            {"indicator": "rsi", "operator": "gt", "value": 80}
+          ]
+        }
+      }
+    ],
+    "watchlist_strategies": {}
+  }
+}
