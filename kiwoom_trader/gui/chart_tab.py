@@ -189,12 +189,25 @@ class ChartTab(QWidget if _HAS_GUI else object):
         if code == self._current_code:
             self._refresh_chart()
 
-    def switch_chart(self, code: str) -> None:
+    def refresh_watchlist_names(self) -> None:
+        """Update watchlist items with stock names from settings."""
+        if not _HAS_GUI or self._watchlist_widget is None:
+            return
+        for i in range(self._watchlist_widget.count()):
+            item = self._watchlist_widget.item(i)
+            code = item.text().split()[0]
+            name = ""
+            if hasattr(self._settings, 'get_stock_name'):
+                name = self._settings.get_stock_name(code)
+            item.setText(f"{code} {name}" if name else code)
+
+    def switch_chart(self, text: str) -> None:
         """Switch the chart display to a different stock code.
 
         Args:
-            code: Stock code to display.
+            text: Watchlist item text, e.g. "005930 삼성전자" or "005930".
         """
+        code = text.split()[0] if text else text
         self._current_code = code
         self._refresh_chart()
 
@@ -240,13 +253,30 @@ class ChartTab(QWidget if _HAS_GUI else object):
         Args:
             code: Stock code.
             candle_index: X-axis index of the candle where trade occurred.
+                          Use -1 to auto-resolve to latest candle index.
             price: Trade price (Y-axis).
             side: "BUY" or "SELL".
         """
+        # Auto-resolve -1 to current latest candle index
+        if candle_index < 0:
+            buf = self._candle_buffers.get(code, [])
+            candle_index = buf[-1][0] if buf else 0
+
         self._trade_markers[code].append((candle_index, price, side))
 
         if code == self._current_code:
             self._refresh_chart()
+
+    def add_signal_marker(self, code: str, signal) -> None:
+        """Add a strategy signal marker to the chart.
+
+        Convenience wrapper that extracts price/side from a Signal dataclass.
+
+        Args:
+            code: Stock code.
+            signal: Signal dataclass with side, price, strategy_name, reason.
+        """
+        self.add_trade_marker(code, -1, signal.price, signal.side)
 
     def _update_indicators(self, code: str, candle: Candle) -> None:
         """Update all indicator values for a given stock code.
@@ -299,7 +329,8 @@ class ChartTab(QWidget if _HAS_GUI else object):
                     "symbol": "t",  # triangle up
                     "brush": "#26A69A",
                     "pen": "#26A69A",
-                    "size": 12,
+                    "size": 14,
+                    "data": f"BUY @{price:,}",
                 })
             else:
                 spots.append({
@@ -307,6 +338,19 @@ class ChartTab(QWidget if _HAS_GUI else object):
                     "symbol": "t1",  # triangle down
                     "brush": "#EF5350",
                     "pen": "#EF5350",
-                    "size": 12,
+                    "size": 14,
+                    "data": f"SELL @{price:,}",
                 })
         self._marker_item.setData(spots)
+
+        # Enable tooltip on hover
+        self._marker_item.setToolTip("")  # Reset
+        def _on_marker_hover(plot, points, ev):
+            if points:
+                tip = points[0].data()
+                if tip:
+                    self._marker_item.setToolTip(str(tip))
+        try:
+            self._marker_item.sigClicked.connect(_on_marker_hover)
+        except (TypeError, RuntimeError):
+            pass  # Already connected or not available

@@ -149,6 +149,14 @@ def form_to_strategy_dict(
             "period": ind["period"],
         }
 
+    def _serialize_condition(c):
+        cond = {"indicator": c["indicator"], "operator": c["operator"]}
+        if "value_ref" in c and c["value_ref"]:
+            cond["value_ref"] = c["value_ref"]
+        else:
+            cond["value"] = c.get("value", 0)
+        return cond
+
     return {
         "name": name,
         "enabled": enabled,
@@ -157,25 +165,11 @@ def form_to_strategy_dict(
         "indicators": ind_dict,
         "entry_rule": {
             "logic": entry_logic,
-            "conditions": [
-                {
-                    "indicator": c["indicator"],
-                    "operator": c["operator"],
-                    "value": c["value"],
-                }
-                for c in entry_conditions
-            ],
+            "conditions": [_serialize_condition(c) for c in entry_conditions],
         },
         "exit_rule": {
             "logic": exit_logic,
-            "conditions": [
-                {
-                    "indicator": c["indicator"],
-                    "operator": c["operator"],
-                    "value": c["value"],
-                }
-                for c in exit_conditions
-            ],
+            "conditions": [_serialize_condition(c) for c in exit_conditions],
         },
     }
 
@@ -282,6 +276,7 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
         self._indicator_rows: list[dict] = []
         self._entry_condition_rows: list[dict] = []
         self._exit_condition_rows: list[dict] = []
+        self._stock_names_cache: dict[str, str] = {}  # code -> name cache
 
         if _HAS_PYQT5:
             self._setup_ui()
@@ -400,15 +395,16 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
         watchlist_layout = QVBoxLayout()
 
         self._watchlist_table = QTableWidget()
-        self._watchlist_table.setColumnCount(2)
-        self._watchlist_table.setHorizontalHeaderLabels(["종목코드", "적용 전략"])
+        self._watchlist_table.setColumnCount(3)
+        self._watchlist_table.setHorizontalHeaderLabels(["종목코드", "종목명", "적용 전략"])
+        self._watchlist_table.cellDoubleClicked.connect(self._on_watchlist_double_click)
         self._load_watchlist()
         watchlist_layout.addWidget(self._watchlist_table)
 
         wl_btn_layout = QHBoxLayout()
-        btn_add_stock = QPushButton("Add Stock")
+        btn_add_stock = QPushButton("종목 추가")
         btn_add_stock.clicked.connect(self._on_add_stock)
-        btn_remove_stock = QPushButton("Remove Stock")
+        btn_remove_stock = QPushButton("종목 제거")
         btn_remove_stock.clicked.connect(self._on_remove_stock)
         wl_btn_layout.addWidget(btn_add_stock)
         wl_btn_layout.addWidget(btn_remove_stock)
@@ -422,10 +418,33 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
     # ------------------------------------------------------------------ #
 
     def _load_strategy_names(self) -> None:
-        """Populate strategy list from config."""
+        """Populate strategy list from config with enabled checkboxes."""
         self._strategy_list.clear()
         for s in self._settings._config.get("strategies", []):
-            self._strategy_list.addItem(s["name"])
+            from PyQt5.QtWidgets import QListWidgetItem
+            item = QListWidgetItem(s["name"])
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Checked if s.get("enabled", True) else Qt.Unchecked)
+            self._strategy_list.addItem(item)
+        # Connect check state change to toggle enabled
+        try:
+            self._strategy_list.itemChanged.disconnect()
+        except (TypeError, RuntimeError):
+            pass
+        self._strategy_list.itemChanged.connect(self._on_strategy_toggled)
+
+    def _on_strategy_toggled(self, item) -> None:
+        """Toggle strategy enabled state from checkbox."""
+        index = self._strategy_list.row(item)
+        strategies = self._settings._config.get("strategies", [])
+        if 0 <= index < len(strategies):
+            enabled = item.checkState() == Qt.Checked
+            strategies[index]["enabled"] = enabled
+            self._settings.save()
+            if self._on_strategy_reload:
+                self._on_strategy_reload()
+            from loguru import logger
+            logger.info(f"전략 {'활성화' if enabled else '비활성화'}: {strategies[index]['name']}")
 
     def _on_strategy_selected(self, index: int) -> None:
         """Load selected strategy into editor form."""
@@ -451,12 +470,18 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
         self._clear_condition_rows("entry")
         self._entry_logic_combo.setCurrentText(form_data["entry_logic"])
         for cond in form_data["entry_conditions"]:
-            self._add_condition_row("entry", cond["indicator"], cond["operator"], cond["value"])
+            self._add_condition_row(
+                "entry", cond.get("indicator", ""), cond.get("operator", "gt"),
+                cond.get("value", 0) or 0, cond.get("value_ref", ""),
+            )
 
         self._clear_condition_rows("exit")
         self._exit_logic_combo.setCurrentText(form_data["exit_logic"])
         for cond in form_data["exit_conditions"]:
-            self._add_condition_row("exit", cond["indicator"], cond["operator"], cond["value"])
+            self._add_condition_row(
+                "exit", cond.get("indicator", ""), cond.get("operator", "gt"),
+                cond.get("value", 0) or 0, cond.get("value_ref", ""),
+            )
 
     def _on_new_strategy(self) -> None:
         """Create a new empty strategy."""
@@ -564,12 +589,23 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
     # Condition row management
     # ------------------------------------------------------------------ #
 
+    # Context keys available for value_ref (built-in + common sub-components)
+    _VALUE_REF_OPTIONS = [
+        "price", "volume", "hour", "minute",
+        "prev_open", "prev_high", "prev_low", "prev_close",
+        "prev_body_pct", "prev_range_pct", "prev_upper_wick_pct", "prev_lower_wick_pct",
+        "gap_pct", "kospi_pct", "kosdaq_pct",
+        "bollinger_upper", "bollinger_middle", "bollinger_lower",
+        "macd_line", "macd_signal", "macd_histogram",
+    ]
+
     def _add_condition_row(
         self,
         section: str,
         indicator: str = "",
         operator: str = "gt",
         value: float = 0,
+        value_ref: str = "",
     ) -> None:
         """Add a condition row to entry or exit section."""
         row_widget = QWidget()
@@ -584,23 +620,58 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
         op_combo.addItems(sorted(VALID_OPERATORS))
         op_combo.setCurrentText(operator)
 
+        # Mode toggle: fixed value vs indicator reference
+        mode_combo = QComboBox()
+        mode_combo.addItems(["value", "ref"])
+        mode_combo.setFixedWidth(50)
+
         val_spin = QDoubleSpinBox()
         val_spin.setRange(-99999, 99999)
         val_spin.setDecimals(2)
         val_spin.setValue(float(value))
 
-        btn_remove = QPushButton("Remove")
+        ref_combo = QComboBox()
+        ref_combo.setEditable(True)
+        ref_combo.addItems(self._VALUE_REF_OPTIONS)
+        # Also add indicator names from current form
+        for ind_row in self._indicator_rows:
+            name = ind_row["name"].text()
+            if name and name not in self._VALUE_REF_OPTIONS:
+                ref_combo.addItem(name)
+
+        btn_remove = QPushButton("X")
+        btn_remove.setFixedWidth(30)
 
         row_layout.addWidget(ind_combo)
         row_layout.addWidget(op_combo)
+        row_layout.addWidget(mode_combo)
         row_layout.addWidget(val_spin)
+        row_layout.addWidget(ref_combo)
         row_layout.addWidget(btn_remove)
+
+        # Toggle visibility based on mode
+        def _toggle_mode():
+            is_ref = mode_combo.currentText() == "ref"
+            val_spin.setVisible(not is_ref)
+            ref_combo.setVisible(is_ref)
+
+        mode_combo.currentTextChanged.connect(lambda: _toggle_mode())
+
+        # Set initial mode
+        if value_ref:
+            mode_combo.setCurrentText("ref")
+            ref_combo.setCurrentText(value_ref)
+        else:
+            mode_combo.setCurrentText("value")
+        _toggle_mode()
 
         row_data = {
             "widget": row_widget,
             "indicator": ind_combo,
             "operator": op_combo,
+            "mode": mode_combo,
             "value": val_spin,
+            "value_ref": ref_combo,
         }
 
         if section == "entry":
@@ -655,19 +726,27 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
 
         entry_conditions = []
         for row in self._entry_condition_rows:
-            entry_conditions.append({
+            cond = {
                 "indicator": row["indicator"].currentText(),
                 "operator": row["operator"].currentText(),
-                "value": row["value"].value(),
-            })
+            }
+            if row["mode"].currentText() == "ref":
+                cond["value_ref"] = row["value_ref"].currentText()
+            else:
+                cond["value"] = row["value"].value()
+            entry_conditions.append(cond)
 
         exit_conditions = []
         for row in self._exit_condition_rows:
-            exit_conditions.append({
+            cond = {
                 "indicator": row["indicator"].currentText(),
                 "operator": row["operator"].currentText(),
-                "value": row["value"].value(),
-            })
+            }
+            if row["mode"].currentText() == "ref":
+                cond["value_ref"] = row["value_ref"].currentText()
+            else:
+                cond["value"] = row["value"].value()
+            exit_conditions.append(cond)
 
         strategy = form_to_strategy_dict(
             name=self._name_edit.text(),
@@ -708,23 +787,88 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
     # Watchlist management
     # ------------------------------------------------------------------ #
 
+    # Stock name resolver: set externally by main.py
+    _stock_name_resolver = None  # Callable[[str], str] or None
+
+    def _resolve_stock_name(self, code: str) -> str:
+        """Get stock name for a code. Uses resolver → settings cache → local cache."""
+        if self._stock_name_resolver:
+            try:
+                return self._stock_name_resolver(code)
+            except Exception:
+                pass
+        # Fallback: settings shared cache → local cache
+        return self._settings.get_stock_name(code) or self._stock_names_cache.get(code, "")
+
     def _load_watchlist(self) -> None:
         """Populate watchlist table from config."""
         ws = self._settings._config.get("watchlist_strategies", {})
         self._watchlist_table.setRowCount(len(ws))
         for row, (code, strats) in enumerate(ws.items()):
+            name = self._resolve_stock_name(code)
             self._watchlist_table.setItem(row, 0, QTableWidgetItem(code))
+            self._watchlist_table.setItem(row, 1, QTableWidgetItem(name))
             self._watchlist_table.setItem(
-                row, 1, QTableWidgetItem(", ".join(strats)),
+                row, 2, QTableWidgetItem(", ".join(strats)),
             )
 
+    def _get_strategy_names(self) -> list[str]:
+        """Get list of all strategy names from config."""
+        return [s["name"] for s in self._settings._config.get("strategies", [])]
+
+    def _show_strategy_picker(self, code: str, current: list[str] | None = None) -> list[str] | None:
+        """Show dialog to pick strategies for a stock. Returns selected list or None if cancelled."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"전략 선택 — {code}")
+        dialog.setMinimumWidth(300)
+        layout = QVBoxLayout(dialog)
+
+        layout.addWidget(QLabel(f"종목 {code}에 적용할 전략을 선택하세요:"))
+
+        checkboxes = []
+        all_names = self._get_strategy_names()
+        current = current or []
+        for name in all_names:
+            cb = QCheckBox(name)
+            cb.setChecked(name in current)
+            checkboxes.append((name, cb))
+            layout.addWidget(cb)
+
+        # Select all / none buttons
+        btn_layout = QHBoxLayout()
+        btn_all = QPushButton("전체 선택")
+        btn_none = QPushButton("전체 해제")
+        btn_all.clicked.connect(lambda: [cb.setChecked(True) for _, cb in checkboxes])
+        btn_none.clicked.connect(lambda: [cb.setChecked(False) for _, cb in checkboxes])
+        btn_layout.addWidget(btn_all)
+        btn_layout.addWidget(btn_none)
+        layout.addLayout(btn_layout)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        if dialog.exec_() == QDialog.Accepted:
+            return [name for name, cb in checkboxes if cb.isChecked()]
+        return None
+
     def _on_add_stock(self) -> None:
-        """Add stock code via dialog."""
-        code, ok = QInputDialog.getText(self, "Add Stock", "종목코드:")
-        if ok and code.strip():
-            watchlist_add_code(self._settings._config, code.strip())
-            self._settings.save()
-            self._load_watchlist()
+        """Add stock code via dialog, then pick strategies."""
+        code, ok = QInputDialog.getText(self, "종목 추가", "종목코드:")
+        if not ok or not code.strip():
+            return
+        code = code.strip()
+
+        # Pick strategies
+        selected = self._show_strategy_picker(code, self._get_strategy_names())
+        if selected is None:
+            return
+
+        watchlist_add_code(self._settings._config, code)
+        watchlist_assign_strategy(self._settings._config, code, selected)
+        self._settings.save()
+        self._load_watchlist()
 
     def _on_remove_stock(self) -> None:
         """Remove selected stock from watchlist."""
@@ -735,6 +879,21 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
                 watchlist_remove_code(self._settings._config, code_item.text())
                 self._settings.save()
                 self._load_watchlist()
+
+    def _on_watchlist_double_click(self, row: int, col: int) -> None:
+        """Double-click watchlist row to edit strategy assignment."""
+        code_item = self._watchlist_table.item(row, 0)
+        if not code_item:
+            return
+        code = code_item.text()
+        ws = self._settings._config.get("watchlist_strategies", {})
+        current = ws.get(code, [])
+
+        selected = self._show_strategy_picker(code, current)
+        if selected is not None:
+            watchlist_assign_strategy(self._settings._config, code, selected)
+            self._settings.save()
+            self._load_watchlist()
 
     # ------------------------------------------------------------------ #
     # Backtest

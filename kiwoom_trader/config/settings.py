@@ -18,6 +18,12 @@ class Settings:
         load_dotenv()
         self._config_path = Path(config_path)
         self._config = self._load_config()
+        # Shared stock name cache: code -> name (populated by main.py)
+        self.stock_names: dict[str, str] = {}
+
+    def get_stock_name(self, code: str) -> str:
+        """Get stock name from cache."""
+        return self.stock_names.get(code, "")
 
     def _load_config(self) -> dict:
         if self._config_path.exists():

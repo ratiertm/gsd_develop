@@ -5,8 +5,13 @@ Wires all core components together and starts the Qt event loop:
 - Phase 2: OrderManager, RiskManager, PositionTracker, MarketHoursManager
 - Phase 3: CandleAggregator, ConditionEngine, StrategyManager, PaperTrader
 - Phase 4: MainWindow (Dashboard, Chart, Strategy tabs), Notifier, signal wiring
+
+Replay mode (--replay):
+  python -m kiwoom_trader.main --replay data/realtime_20260320.db
+  Loads historical tick data into UI without Kiwoom API login.
 """
 
+import argparse
 import os
 import sys
 
@@ -80,49 +85,73 @@ def main():
     from PyQt5.QtWidgets import QApplication
     from PyQt5.QtCore import QTimer
 
-    setup_logging()
-    logger.info("=== KiwoomDayTrader starting ===")
+    # Parse CLI arguments
+    parser = argparse.ArgumentParser(description="KiwoomDayTrader")
+    parser.add_argument("--sim", action="store_true", help="Simulation mode (no Kiwoom login, use Dashboard to start)")
+    args, remaining = parser.parse_known_args()
 
-    app = QApplication(sys.argv)
+    setup_logging()
+
+    replay_mode = args.sim
+    if replay_mode:
+        logger.info("=== KiwoomDayTrader SIMULATION MODE ===")
+    else:
+        logger.info("=== KiwoomDayTrader starting ===")
+
+    app = QApplication(remaining or sys.argv[:1])
     settings = Settings()
 
     # === Phase 1: API Foundation ===
-    api = KiwoomAPI()
-    event_registry = EventHandlerRegistry()
-    tr_queue = TRRequestQueue(
-        api, interval_ms=settings._config["tr_interval_ms"]
-    )
-    session_manager = SessionManager(api)
-    real_data_manager = RealDataManager(api, session_manager=session_manager)
+    api = None
+    event_registry = None
+    tr_queue = None
+    session_manager = None
+    real_data_manager = None
 
-    # Wire event routing: TR data -> EventHandlerRegistry
-    api.tr_data_received.connect(
-        lambda *args: event_registry.handle_tr_data(args[1], *args)
-    )
-
-    # Wire event routing: real data -> RealDataManager
-    api.real_data_received.connect(
-        lambda code, real_type, data: real_data_manager.on_real_data(
-            code, real_type, data
+    if not replay_mode:
+        api = KiwoomAPI()
+        event_registry = EventHandlerRegistry()
+        tr_queue = TRRequestQueue(
+            api, interval_ms=settings._config["tr_interval_ms"]
         )
-    )
+        session_manager = SessionManager(api)
+        real_data_manager = RealDataManager(api, session_manager=session_manager)
 
-    # Wire session events
-    def _on_session_restored():
-        """Reload balance on reconnect to sync PositionTracker with broker."""
-        logger.info("Session restored")
-        account_no = os.environ.get("KIWOOM_ACCOUNT_NO", "")
-        if account_no:
-            _select_account(account_no)
+        # Wire event routing: TR data -> EventHandlerRegistry
+        api.tr_data_received.connect(
+            lambda *args: event_registry.handle_tr_data(args[1], *args)
+        )
 
-    session_manager.session_restored.connect(_on_session_restored)
-    session_manager.session_lost.connect(
-        lambda: logger.warning("Session lost")
-    )
+        # Wire event routing: real data -> RealDataManager
+        api.real_data_received.connect(
+            lambda code, real_type, data: real_data_manager.on_real_data(
+                code, real_type, data
+            )
+        )
+
+        # Wire session events
+        def _on_session_restored():
+            """Reload balance on reconnect to sync PositionTracker with broker."""
+            logger.info("Session restored")
+            account_no = os.environ.get("KIWOOM_ACCOUNT_NO", "")
+            if account_no:
+                _select_account(account_no)
+
+        session_manager.session_restored.connect(_on_session_restored)
+        session_manager.session_lost.connect(
+            lambda: logger.warning("Session lost")
+        )
+    else:
+        logger.info("Replay mode: skipping Phase 1 (API)")
 
     # === Phase 2: Order Execution & Risk Management ===
     position_tracker = None
-    if _HAS_CORE and OrderManager is not None:
+    if replay_mode:
+        risk_manager = None
+        order_manager = None
+        market_hours = None
+        logger.info("Replay mode: skipping Phase 2 (Order/Risk)")
+    elif _HAS_CORE and OrderManager is not None:
         risk_config = settings.risk_config
         account_no = settings.account_no
         total_capital = settings._config.get("total_capital", 10_000_000)
@@ -211,10 +240,11 @@ def main():
         if mode == "paper" and paper_trader is not None:
             strategy_manager.paper_trader = paper_trader
 
-        # Wire: RealDataManager tick -> CandleAggregator
-        real_data_manager.register_subscriber(
-            "주식체결", candle_aggregator.on_tick
-        )
+        # Wire: RealDataManager tick -> CandleAggregator (live mode only)
+        if real_data_manager is not None:
+            real_data_manager.register_subscriber(
+                "주식체결", candle_aggregator.on_tick
+            )
 
         # Wire: CandleAggregator candle -> StrategyManager
         # Direct 2-arg match: callback(code, candle) -> on_candle_complete(code, candle)
@@ -280,8 +310,42 @@ def main():
 
         # Get tab references for signal wiring
         dashboard = main_window._dashboard_tab
+        dashboard._settings = settings  # for stock name lookup
         chart_tab = main_window._chart_tab
         strategy_tab = main_window._strategy_tab
+
+        # Load stock names into shared settings cache
+        if replay_mode:
+            from pathlib import Path
+            import sqlite3
+            data_dir = Path(__file__).resolve().parent.parent / "data"
+            for db_file in sorted(data_dir.glob("realtime_*.db"), reverse=True):
+                try:
+                    conn = sqlite3.connect(str(db_file))
+                    rows = conn.execute(
+                        "SELECT DISTINCT code, name FROM 체결 WHERE name != ''"
+                    ).fetchall()
+                    conn.close()
+                    for code, name in rows:
+                        if code not in settings.stock_names and name:
+                            settings.stock_names[code] = name
+                except Exception:
+                    pass
+            logger.info(f"Stock names loaded from DB: {len(settings.stock_names)} codes")
+            # Refresh UI with names
+            if hasattr(chart_tab, 'refresh_watchlist_names'):
+                chart_tab.refresh_watchlist_names()
+            if hasattr(strategy_tab, '_load_watchlist'):
+                strategy_tab._load_watchlist()
+        elif api is not None:
+            # Live mode: resolver that queries API and caches
+            def _resolve_name(code):
+                if code not in settings.stock_names:
+                    name = api.get_master_code_name(code)
+                    if name:
+                        settings.stock_names[code] = name
+                return settings.stock_names.get(code, "")
+            strategy_tab._stock_name_resolver = _resolve_name
 
         # Create Notifier with GUI toast support
         notifier = Notifier(
@@ -332,6 +396,64 @@ def main():
             logger.info(f"모드 전환: {new_mode}")
 
         dashboard._on_mode_change = _on_mode_change
+
+        # --- Wire simulation button ---
+        def _on_sim_requested(date_str, interval, speed):
+            """Handle simulation request from Dashboard button."""
+            from pathlib import Path
+            data_dir = Path(__file__).resolve().parent.parent / "data"
+            replay_db = data_dir / f"realtime_{date_str}.db"
+            if not replay_db.exists():
+                from PyQt5.QtWidgets import QMessageBox
+                available = [f.stem.replace("realtime_", "") for f in data_dir.glob("realtime_*.db")]
+                QMessageBox.warning(
+                    main_window, "데이터 없음",
+                    f"해당 날짜의 데이터가 없습니다:\n{replay_db}\n\n사용 가능한 날짜: {', '.join(available)}",
+                )
+                return
+
+            # Find best prev-day DB
+            prev_day_db = None
+            for candidate in sorted(data_dir.glob("minute_1m_*.db"), reverse=True):
+                if candidate.name < f"minute_1m_{date_str}.db":
+                    prev_day_db = candidate
+                    break
+            if not prev_day_db:
+                same = data_dir / f"minute_1m_{date_str}.db"
+                if same.exists():
+                    prev_day_db = same
+
+            dashboard.update_status(
+                connected=True, market_state="SIMULATION",
+                strategy_count=len(strategy_manager.strategies) if strategy_manager else 0,
+                mode="replay",
+            )
+            main_window._status_bar.showMessage(
+                f"SIMULATION | {date_str} | {interval}분봉"
+            )
+
+            _launch_simulation(
+                str(replay_db), str(prev_day_db) if prev_day_db else None,
+                interval, speed, slippage=0,
+                title=f"시뮬레이션: {date_str}",
+            )
+
+        dashboard._on_sim_requested = _on_sim_requested
+
+        # --- Wire manual order panel ---
+        def _on_manual_order(code, side, qty, price):
+            """Handle manual order from Dashboard panel."""
+            if order_manager is None:
+                logger.warning("OrderManager not available for manual order")
+                return
+            from kiwoom_trader.core.models import OrderSide
+            from kiwoom_trader.config.constants import HogaGb
+            order_side = OrderSide.BUY if side == "BUY" else OrderSide.SELL
+            hoga = HogaGb.MARKET if price == 0 else HogaGb.LIMIT
+            order_manager.submit_order(code, order_side, qty, price, hoga)
+            logger.info(f"수동 주문: {side} {code} x{qty} @{price:,}")
+
+        dashboard._on_order_requested = _on_manual_order
 
         # --- Wire Dashboard signals ---
 
@@ -401,6 +523,24 @@ def main():
         if candle_aggregator is not None and hasattr(chart_tab, "on_new_candle"):
             candle_aggregator.register_callback(chart_tab.on_new_candle)
 
+        # StrategyManager signal -> chart signal markers
+        if strategy_manager is not None and hasattr(chart_tab, "add_signal_marker"):
+            _original_on_candle = strategy_manager.on_candle_complete
+
+            def _on_candle_with_chart_signals(code, candle):
+                signals = _original_on_candle(code, candle)
+                for sig in signals:
+                    chart_tab.add_signal_marker(code, sig)
+                return signals
+
+            # Replace the callback in CandleAggregator
+            if candle_aggregator is not None:
+                candle_aggregator._callbacks = [
+                    cb for cb in candle_aggregator._callbacks
+                    if cb != _original_on_candle
+                ]
+                candle_aggregator.register_callback(_on_candle_with_chart_signals)
+
         # order_filled -> chart trade marker (bridge for buy/sell side detection)
         if order_manager is not None and hasattr(chart_tab, "add_trade_marker"):
             def _on_filled_for_chart(order_no, code, qty, price):
@@ -422,6 +562,7 @@ def main():
                 dashboard.append_log,
                 format="{time:HH:mm:ss} | {level} | {message}",
                 level="INFO",
+                enqueue=True,  # Thread-safe: queue messages for main thread
             )
 
         # --- Wire Notifier to risk signals ---
@@ -646,11 +787,221 @@ def main():
         # Start session monitoring
         session_manager.start_monitoring()
 
-    api.connected.connect(_on_login_success)
+    # === Shared simulation launcher (used by CLI --replay and Dashboard button) ===
+    def _launch_simulation(replay_db_path, prev_day_path, interval, speed, slippage=0, title="Replay"):
+        """Launch a replay simulation with thread-safe UI updates."""
+        from pathlib import Path
+        from PyQt5.QtCore import pyqtSignal, QObject
+        from PyQt5.QtWidgets import QProgressDialog
+        from kiwoom_trader.backtest.replay_engine import ReplayEngine
+        from kiwoom_trader.backtest.cost_model import CostConfig
+        from kiwoom_trader.backtest.backtest_worker import BacktestWorker
 
-    # Open login dialog
-    api.comm_connect()
-    logger.info("Login dialog opened, waiting for user...")
+        replay_db = Path(replay_db_path)
+
+        # Build engine
+        sim_engine = ReplayEngine(
+            strategy_configs={**settings.strategy_config, "mode": "replay"},
+            risk_config=settings.risk_config,
+            cost_config=CostConfig(slippage_bp=slippage),
+            initial_capital=settings._config.get("total_capital", 10_000_000),
+            candle_interval=interval,
+        )
+
+        # Thread-safe bridge: worker stores data, main thread polls via QTimer
+        class SimWorker(BacktestWorker):
+            """QThread for replay — no direct UI calls."""
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+                self.pending_candles = []
+                self.pending_signals = []
+                self.pending_trades = []
+                self.sim_positions = {}
+                self.sim_capital = 0.0
+                self.sim_initial = 0
+                self.sim_last_prices = {}  # code -> last close price
+
+            def run(self):
+                try:
+                    self.sim_initial = sim_engine._initial_capital
+                    self.progress.emit(0, 1, "Loading...")
+
+                    def _on_candle(code, candle):
+                        self.pending_candles.append((code, candle))
+                        # Deep copy positions to avoid thread issues
+                        import copy
+                        self.sim_positions = copy.deepcopy(sim_engine._positions)
+                        self.sim_capital = sim_engine._capital
+                        self.sim_last_prices[code] = candle.close
+                        # Check for new trades
+                        if len(sim_engine._trades) > len(self.pending_trades):
+                            for t in sim_engine._trades[len(self.pending_trades):]:
+                                self.pending_trades.append(t)
+
+                    def _on_signal(signal):
+                        self.pending_signals.append(signal)
+
+                    result = sim_engine.run(
+                        db_path=str(replay_db),
+                        prev_day_db=str(prev_day_path) if prev_day_path else None,
+                        speed=speed,
+                        on_candle=_on_candle,
+                        on_signal=_on_signal,
+                        on_progress=lambda c, t: self.progress.emit(c, t, "Simulating..."),
+                    )
+                    compute_all_metrics(result)
+                    self.finished.emit(result)
+                except Exception as e:
+                    self.error.emit(str(e))
+
+        worker = SimWorker(data_source=None, engine=None, code="", start_date="", end_date="")
+
+        # No progress dialog — use status bar + log panel instead
+        worker.progress.connect(lambda c, t, p: (
+            main_window._status_bar.showMessage(
+                f"{title} | {c:,}/{t:,} ticks ({c*100//max(t,1)}%)"
+            ) if main_window else None
+        ))
+
+        # QTimer polls worker's pending data and pushes to UI (main thread)
+        _trade_idx = [0]
+        _candle_count = [0]
+        poll_timer = QTimer()
+
+        def _poll_worker():
+            # Candles → Chart + log
+            while worker.pending_candles:
+                code, candle = worker.pending_candles.pop(0)
+                if hasattr(chart_tab, "on_new_candle"):
+                    chart_tab.on_new_candle(code, candle)
+                _candle_count[0] += 1
+                ts = candle.timestamp.strftime("%H:%M") if hasattr(candle.timestamp, "strftime") else ""
+                # Track prev close & volume per code for change display
+                prev_c_key = f"_prev_close_{code}"
+                prev_v_key = f"_prev_vol_{code}"
+                prev_close = getattr(worker, prev_c_key, candle.close)
+                prev_vol = getattr(worker, prev_v_key, candle.volume)
+                chg = candle.close - prev_close
+                chg_str = f"+{chg:,}" if chg >= 0 else f"{chg:,}"
+                vol_chg = candle.volume - prev_vol
+                vol_chg_str = f"+{vol_chg:,}" if vol_chg >= 0 else f"{vol_chg:,}"
+                setattr(worker, prev_c_key, candle.close)
+                setattr(worker, prev_v_key, candle.volume)
+                if hasattr(dashboard, "append_log"):
+                    dashboard.append_log(
+                        f"[{ts}] {code} {candle.close:,}({chg_str}) V={candle.volume:,}({vol_chg_str})"
+                    )
+
+            # Signals → Chart markers
+            while worker.pending_signals:
+                sig = worker.pending_signals.pop(0)
+                if hasattr(chart_tab, "add_signal_marker"):
+                    chart_tab.add_signal_marker(sig.code, sig)
+                if hasattr(dashboard, "append_log"):
+                    dashboard.append_log(
+                        f"{'BUY' if sig.side == 'BUY' else 'SELL'} {sig.code} @{sig.price:,} | {sig.reason}"
+                    )
+
+            # Trades → Dashboard
+            while _trade_idx[0] < len(worker.pending_trades):
+                if hasattr(dashboard, "add_trade_record"):
+                    dashboard.add_trade_record(worker.pending_trades[_trade_idx[0]])
+                _trade_idx[0] += 1
+
+            # Positions + P&L → Dashboard
+            if hasattr(dashboard, "update_sim_positions"):
+                dashboard.update_sim_positions(
+                    worker.sim_positions, worker.sim_capital, worker.sim_initial,
+                    last_prices=worker.sim_last_prices,
+                )
+
+        poll_timer.timeout.connect(_poll_worker)
+        poll_timer.start(100)  # 100ms polling
+
+        def _on_finished(result):
+            poll_timer.stop()
+            _poll_worker()  # flush remaining
+            main_window._status_bar.showMessage(
+                f"{title} 완료 | {result.total_trades}건, 수익률={result.total_return_pct:+.2f}%"
+            )
+            # Re-enable sim button
+            if hasattr(dashboard, "_btn_sim_start"):
+                dashboard._btn_sim_start.setEnabled(True)
+                dashboard._btn_sim_start.setText("시뮬레이션 시작")
+            logger.info(f"시뮬레이션 완료: {result.total_trades}건, 수익률={result.total_return_pct:+.2f}%")
+            if _HAS_BACKTEST:
+                BacktestDialog(result, [], parent=main_window).exec_()
+
+        def _on_error(msg):
+            poll_timer.stop()
+            if hasattr(dashboard, "_btn_sim_start"):
+                dashboard._btn_sim_start.setEnabled(True)
+                dashboard._btn_sim_start.setText("시뮬레이션 시작")
+            main_window._status_bar.showMessage(f"시뮬레이션 오류: {msg}")
+            logger.error(f"시뮬레이션 오류: {msg}")
+
+        worker.finished.connect(_on_finished)
+        worker.error.connect(_on_error)
+
+        # Switch button to "stop" mode while running
+        def _stop_sim():
+            poll_timer.stop()
+            worker.terminate()
+            worker.wait(2000)
+            logger.info("시뮬레이션 취소됨")
+            main_window._status_bar.showMessage(
+                "SIMULATION MODE | 날짜를 선택하고 시뮬레이션 시작 버튼을 누르세요"
+            )
+            dashboard.update_status(
+                connected=True, market_state="STANDBY",
+                strategy_count=len(strategy_manager.strategies) if strategy_manager else 0,
+                mode="replay",
+            )
+            if hasattr(dashboard, "_btn_sim_start"):
+                dashboard._btn_sim_start.setText("시뮬레이션 시작")
+                dashboard._btn_sim_start.setStyleSheet(
+                    "QPushButton { background-color: #FF9800; color: white; "
+                    "font-weight: bold; padding: 6px; border-radius: 4px; }"
+                )
+                try:
+                    dashboard._btn_sim_start.clicked.disconnect()
+                except (TypeError, RuntimeError):
+                    pass
+                dashboard._btn_sim_start.clicked.connect(dashboard._on_sim_start)
+
+        if hasattr(dashboard, "_btn_sim_start"):
+            dashboard._btn_sim_start.setText("시뮬레이션 중지")
+            dashboard._btn_sim_start.setStyleSheet(
+                "QPushButton { background-color: #EF5350; color: white; "
+                "font-weight: bold; padding: 6px; border-radius: 4px; }"
+            )
+            try:
+                dashboard._btn_sim_start.clicked.disconnect()
+            except (TypeError, RuntimeError):
+                pass
+            dashboard._btn_sim_start.clicked.connect(_stop_sim)
+
+        main_window._sim_worker = worker
+        main_window._sim_poll_timer = poll_timer
+        worker.start()
+
+    if replay_mode:
+        # === Replay Mode: UI only, simulation via Dashboard button ===
+        if _HAS_GUI and main_window is not None:
+            main_window._status_bar.showMessage(
+                "SIMULATION MODE | 날짜를 선택하고 시뮬레이션 시작 버튼을 누르세요"
+            )
+            dashboard.update_status(
+                connected=True, market_state="STANDBY",
+                strategy_count=len(strategy_manager.strategies) if strategy_manager else 0,
+                mode="replay",
+            )
+        logger.info("Simulation mode ready — use Dashboard panel to start")
+    else:
+        # === Live Mode: Kiwoom API login ===
+        api.connected.connect(_on_login_success)
+        api.comm_connect()
+        logger.info("Login dialog opened, waiting for user...")
 
     sys.exit(app.exec_())
 

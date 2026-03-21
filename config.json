@@ -15,50 +15,27 @@
   "total_capital": 10000000,
   "strategies": [
     {
-      "name": "RSI_REVERSAL",
-      "enabled": true,
-      "priority": 10,
-      "cooldown_sec": 300,
-      "indicators": {
-        "rsi": {
-          "type": "rsi",
-          "period": 14
-        }
-      },
-      "entry_rule": {
-        "logic": "AND",
-        "conditions": [
-          {
-            "indicator": "rsi",
-            "operator": "lt",
-            "value": 30
-          }
-        ]
-      },
-      "exit_rule": {
-        "logic": "AND",
-        "conditions": [
-          {
-            "indicator": "rsi",
-            "operator": "gt",
-            "value": 70
-          }
-        ]
-      }
-    },
-    {
       "name": "MA_CROSSOVER",
       "enabled": true,
-      "priority": 20,
+      "priority": 1,
       "cooldown_sec": 300,
       "indicators": {
         "ema_short": {
           "type": "ema",
-          "period": 5
+          "period": 3
         },
         "ema_long": {
           "type": "ema",
-          "period": 20
+          "period": 10
+        },
+        "rsi": {
+          "type": "rsi",
+          "period": 7
+        },
+        "bollinger": {
+          "type": "bollinger",
+          "period": 10,
+          "num_std": 2.0
         }
       },
       "entry_rule": {
@@ -68,16 +45,448 @@
             "indicator": "ema_short",
             "operator": "cross_above",
             "value_ref": "ema_long"
+          },
+          {
+            "indicator": "rsi",
+            "operator": "lt",
+            "value": 65
+          },
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 35
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "bollinger_middle"
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_low"
+          },
+          {
+            "indicator": "gap_pct",
+            "operator": "lt",
+            "value": 2.0
+          },
+          {
+            "indicator": "hour",
+            "operator": "lt",
+            "value": 14
+          },
+          {
+            "indicator": "kospi_pct",
+            "operator": "gt",
+            "value": -1.0
+          },
+          {
+            "indicator": "prev_body_pct",
+            "operator": "gt",
+            "value": 0.5
           }
         ]
       },
       "exit_rule": {
-        "logic": "AND",
+        "logic": "OR",
         "conditions": [
           {
             "indicator": "ema_short",
             "operator": "cross_below",
             "value_ref": "ema_long"
+          },
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 80
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RSI_REVERSAL",
+      "enabled": true,
+      "priority": 10,
+      "cooldown_sec": 300,
+      "indicators": {
+        "rsi": {
+          "type": "rsi",
+          "period": 7
+        }
+      },
+      "entry_rule": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "indicator": "rsi",
+            "operator": "lt",
+            "value": 20
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_low"
+          },
+          {
+            "indicator": "gap_pct",
+            "operator": "gt",
+            "value": -2.0
+          },
+          {
+            "indicator": "hour",
+            "operator": "lt",
+            "value": 14
+          },
+          {
+            "indicator": "kospi_pct",
+            "operator": "gt",
+            "value": -1.0
+          },
+          {
+            "indicator": "prev_upper_wick_pct",
+            "operator": "lt",
+            "value": 3.0
+          }
+        ]
+      },
+      "exit_rule": {
+        "logic": "OR",
+        "conditions": [
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 80
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BOLLINGER_REVERSAL",
+      "enabled": true,
+      "priority": 15,
+      "cooldown_sec": 300,
+      "indicators": {
+        "bollinger": {
+          "type": "bollinger",
+          "period": 10,
+          "num_std": 2.5
+        },
+        "rsi": {
+          "type": "rsi",
+          "period": 7
+        }
+      },
+      "entry_rule": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "indicator": "price",
+            "operator": "lt",
+            "value_ref": "bollinger_lower"
+          },
+          {
+            "indicator": "rsi",
+            "operator": "lt",
+            "value": 20
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_low"
+          },
+          {
+            "indicator": "gap_pct",
+            "operator": "gt",
+            "value": -2.0
+          },
+          {
+            "indicator": "hour",
+            "operator": "lt",
+            "value": 14
+          },
+          {
+            "indicator": "kospi_pct",
+            "operator": "gt",
+            "value": -1.0
+          },
+          {
+            "indicator": "prev_upper_wick_pct",
+            "operator": "lt",
+            "value": 3.0
+          }
+        ]
+      },
+      "exit_rule": {
+        "logic": "OR",
+        "conditions": [
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "bollinger_middle"
+          },
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 85
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MACD_SIGNAL_CROSS",
+      "enabled": true,
+      "priority": 20,
+      "cooldown_sec": 300,
+      "indicators": {
+        "macd": {
+          "type": "macd",
+          "fast": 6,
+          "slow": 13,
+          "signal": 5
+        },
+        "rsi": {
+          "type": "rsi",
+          "period": 7
+        },
+        "bollinger": {
+          "type": "bollinger",
+          "period": 10,
+          "num_std": 2.0
+        }
+      },
+      "entry_rule": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "indicator": "macd_line",
+            "operator": "cross_above",
+            "value_ref": "macd_signal"
+          },
+          {
+            "indicator": "macd_histogram",
+            "operator": "gt",
+            "value": 0
+          },
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 35
+          },
+          {
+            "indicator": "rsi",
+            "operator": "lt",
+            "value": 65
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "bollinger_middle"
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_low"
+          },
+          {
+            "indicator": "gap_pct",
+            "operator": "lt",
+            "value": 2.0
+          },
+          {
+            "indicator": "hour",
+            "operator": "lt",
+            "value": 14
+          },
+          {
+            "indicator": "kospi_pct",
+            "operator": "gt",
+            "value": -1.0
+          },
+          {
+            "indicator": "prev_body_pct",
+            "operator": "gt",
+            "value": 0.5
+          }
+        ]
+      },
+      "exit_rule": {
+        "logic": "OR",
+        "conditions": [
+          {
+            "indicator": "macd_line",
+            "operator": "cross_below",
+            "value_ref": "macd_signal"
+          },
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 80
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VWAP_BREAKOUT",
+      "enabled": true,
+      "priority": 12,
+      "cooldown_sec": 600,
+      "indicators": {
+        "vwap": {
+          "type": "vwap"
+        },
+        "rsi": {
+          "type": "rsi",
+          "period": 7
+        }
+      },
+      "entry_rule": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "indicator": "price",
+            "operator": "cross_above",
+            "value_ref": "vwap"
+          },
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 50
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_low"
+          },
+          {
+            "indicator": "gap_pct",
+            "operator": "lt",
+            "value": 2.0
+          },
+          {
+            "indicator": "hour",
+            "operator": "lt",
+            "value": 14
+          },
+          {
+            "indicator": "kospi_pct",
+            "operator": "gt",
+            "value": -1.0
+          },
+          {
+            "indicator": "prev_body_pct",
+            "operator": "gt",
+            "value": 0
+          }
+        ]
+      },
+      "exit_rule": {
+        "logic": "OR",
+        "conditions": [
+          {
+            "indicator": "price",
+            "operator": "cross_below",
+            "value_ref": "vwap"
+          },
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 80
+          },
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GAP_REVERSAL",
+      "enabled": true,
+      "priority": 18,
+      "cooldown_sec": 600,
+      "indicators": {
+        "rsi": {
+          "type": "rsi",
+          "period": 7
+        },
+        "vwap": {
+          "type": "vwap"
+        }
+      },
+      "entry_rule": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "indicator": "gap_pct",
+            "operator": "lt",
+            "value": -1.0
+          },
+          {
+            "indicator": "price",
+            "operator": "cross_above",
+            "value_ref": "prev_low"
+          },
+          {
+            "indicator": "rsi",
+            "operator": "lt",
+            "value": 40
+          },
+          {
+            "indicator": "hour",
+            "operator": "gte",
+            "value": 9
+          },
+          {
+            "indicator": "hour",
+            "operator": "lt",
+            "value": 11
+          },
+          {
+            "indicator": "kospi_pct",
+            "operator": "gt",
+            "value": -1.0
+          }
+        ]
+      },
+      "exit_rule": {
+        "logic": "OR",
+        "conditions": [
+          {
+            "indicator": "price",
+            "operator": "gt",
+            "value_ref": "prev_close"
+          },
+          {
+            "indicator": "rsi",
+            "operator": "gt",
+            "value": 70
+          },
+          {
+            "indicator": "hour",
+            "operator": "gte",
+            "value": 14
           }
         ]
       }
@@ -85,11 +494,25 @@
   ],
   "watchlist_strategies": {
     "005930": [
+      "MA_CROSSOVER",
       "RSI_REVERSAL",
-      "MA_CROSSOVER"
+      "BOLLINGER_REVERSAL"
     ],
     "035720": [
-      "RSI_REVERSAL"
+      "MA_CROSSOVER",
+      "RSI_REVERSAL",
+      "BOLLINGER_REVERSAL",
+      "MACD_SIGNAL_CROSS",
+      "VWAP_BREAKOUT",
+      "GAP_REVERSAL"
+    ],
+    "한화에에로스페이스": [
+      "MA_CROSSOVER",
+      "RSI_REVERSAL",
+      "BOLLINGER_REVERSAL",
+      "MACD_SIGNAL_CROSS",
+      "VWAP_BREAKOUT",
+      "GAP_REVERSAL"
     ]
   },
   "notification": {

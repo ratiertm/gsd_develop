@@ -66,6 +66,18 @@ class KiwoomAPI(QObject):
         logger.debug(f"GetConnectState() -> {state}")
         return state
 
+    # --- Master Data ---
+
+    def get_master_code_name(self, code: str) -> str:
+        """Get stock name for a given code. e.g. '005930' -> '삼성전자'."""
+        ret = self.ocx.dynamicCall("GetMasterCodeName(QString)", code)
+        return ret.strip() if ret else ""
+
+    def get_code_list_by_market(self, market: str = "0") -> list[str]:
+        """Get all stock codes for a market. '0'=KOSPI, '10'=KOSDAQ."""
+        ret = self.ocx.dynamicCall("GetCodeListByMarket(QString)", market)
+        return [c for c in ret.split(";") if c.strip()]
+
     # --- Login Info ---
 
     def get_login_info(self, tag: str) -> str:

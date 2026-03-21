@@ -10,6 +10,7 @@ try:
     from PyQt5.QtGui import QColor, QFont, QTextCursor
     from PyQt5.QtWidgets import (
         QComboBox,
+        QDateEdit,
         QFormLayout,
         QGroupBox,
         QHBoxLayout,
@@ -17,6 +18,7 @@ try:
         QLabel,
         QMessageBox,
         QPushButton,
+        QSpinBox,
         QSplitter,
         QTabWidget,
         QTableWidget,
@@ -197,6 +199,94 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
         pnl_group.setLayout(pnl_form)
         right_layout.addWidget(pnl_group)
 
+        # Simulation control group
+        sim_group = QGroupBox("시뮬레이션")
+        sim_form = QFormLayout()
+
+        self._sim_date_edit = QDateEdit() if _HAS_PYQT5 else None
+        if self._sim_date_edit:
+            from PyQt5.QtCore import QDate
+            self._sim_date_edit.setCalendarPopup(True)
+            self._sim_date_edit.setDate(QDate.currentDate().addDays(-1))
+            self._sim_date_edit.setDisplayFormat("yyyy-MM-dd")
+
+        self._sim_interval_combo = QComboBox()
+        self._sim_interval_combo.addItems(["1분", "3분", "5분", "10분"])
+        self._sim_interval_combo.setCurrentIndex(1)  # default 3분
+
+        self._sim_speed_combo = QComboBox()
+        self._sim_speed_combo.addItems(["최대 속도", "빠르게", "보통 (1봉/초)", "천천히 (1봉/3초)"])
+        self._sim_speed_combo.setCurrentIndex(2)  # default 보통
+
+        self._btn_sim_start = QPushButton("시뮬레이션 시작")
+        self._btn_sim_start.setStyleSheet(
+            "QPushButton { background-color: #FF9800; color: white; "
+            "font-weight: bold; padding: 6px; border-radius: 4px; }"
+        )
+        self._btn_sim_start.clicked.connect(self._on_sim_start)
+        self._on_sim_requested = None  # external callback: (date_str, interval, speed)
+
+        sim_form.addRow("날짜:", self._sim_date_edit)
+        sim_form.addRow("봉 간격:", self._sim_interval_combo)
+        sim_form.addRow("속도:", self._sim_speed_combo)
+        sim_group.setLayout(sim_form)
+
+        sim_layout = QVBoxLayout()
+        sim_form_widget = QWidget()
+        sim_form_widget.setLayout(sim_form)
+        sim_layout.addWidget(sim_form_widget)
+        sim_layout.addWidget(self._btn_sim_start)
+        sim_group.setLayout(sim_layout)
+        right_layout.addWidget(sim_group)
+
+        # Manual order group
+        order_group = QGroupBox("수동 주문")
+        order_form = QFormLayout()
+        self._order_code_edit = QComboBox()
+        self._order_code_edit.setEditable(True)
+        self._order_code_edit.setPlaceholderText("종목코드")
+        self._order_qty_spin = QSpinBox() if _HAS_PYQT5 else None
+        if self._order_qty_spin:
+            self._order_qty_spin.setRange(1, 9999)
+            self._order_qty_spin.setValue(1)
+        self._order_price_spin = QSpinBox() if _HAS_PYQT5 else None
+        if self._order_price_spin:
+            self._order_price_spin.setRange(0, 99999999)
+            self._order_price_spin.setSingleStep(100)
+            self._order_price_spin.setSpecialValueText("시장가")
+
+        order_form.addRow("종목:", self._order_code_edit)
+        order_form.addRow("수량:", self._order_qty_spin)
+        order_form.addRow("가격:", self._order_price_spin)
+
+        order_btn_layout = QHBoxLayout()
+        self._btn_buy = QPushButton("매수")
+        self._btn_buy.setStyleSheet(
+            "QPushButton { background-color: #EF5350; color: white; "
+            "font-weight: bold; padding: 6px; border-radius: 4px; }"
+        )
+        self._btn_sell = QPushButton("매도")
+        self._btn_sell.setStyleSheet(
+            "QPushButton { background-color: #42A5F5; color: white; "
+            "font-weight: bold; padding: 6px; border-radius: 4px; }"
+        )
+        order_btn_layout.addWidget(self._btn_buy)
+        order_btn_layout.addWidget(self._btn_sell)
+
+        order_form_widget = QWidget()
+        order_form_widget.setLayout(order_form)
+
+        order_layout = QVBoxLayout()
+        order_layout.addWidget(order_form_widget)
+        order_layout.addLayout(order_btn_layout)
+        order_group.setLayout(order_layout)
+        right_layout.addWidget(order_group)
+
+        # Wire buy/sell buttons
+        self._btn_buy.clicked.connect(lambda: self._on_manual_order("BUY"))
+        self._btn_sell.clicked.connect(lambda: self._on_manual_order("SELL"))
+        self._on_order_requested = None  # external callback
+
         right_layout.addStretch()
         top_splitter.addWidget(right_panel)
         top_splitter.setStretchFactor(0, 6)  # positions 60%
@@ -215,6 +305,17 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
         )
         self._pending_table.setEditTriggers(QTableWidget.NoEditTriggers)
         orders_tabs.addTab(self._pending_table, "대기 주문")
+
+        # Simulation trade log tab
+        self._TRADE_LOG_COLUMNS = ["시간", "종목", "매매", "전략", "가격", "수량", "손익", "잔고"]
+        self._trade_log_table = QTableWidget()
+        self._trade_log_table.setColumnCount(len(self._TRADE_LOG_COLUMNS))
+        self._trade_log_table.setHorizontalHeaderLabels(self._TRADE_LOG_COLUMNS)
+        self._trade_log_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.Stretch,
+        )
+        self._trade_log_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        orders_tabs.addTab(self._trade_log_table, "시뮬레이션 거래")
 
         self._filled_table = QTableWidget()
         self._filled_table.setColumnCount(len(self.ORDER_COLUMNS))
@@ -396,6 +497,55 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
         if self._on_mode_change:
             self._on_mode_change(new_mode)
 
+    def _on_sim_start(self) -> None:
+        """Handle simulation start button click."""
+        if not self._sim_date_edit:
+            return
+        date_str = self._sim_date_edit.date().toString("yyyyMMdd")
+
+        interval_map = {"1분": 1, "3분": 3, "5분": 5, "10분": 10}
+        interval = interval_map.get(self._sim_interval_combo.currentText(), 3)
+
+        # Speed = ticks per second (higher = faster)
+        # 1분봉 = ~600틱, so 10000 tps → ~1봉/0.06초, 600 → 1봉/초, 200 → 1봉/3초
+        speed_map = {"최대 속도": 0, "빠르게": 50000, "보통 (1봉/초)": 600, "천천히 (1봉/3초)": 200}
+        speed = speed_map.get(self._sim_speed_combo.currentText(), 600)
+
+        # Clear previous simulation data
+        self._trade_log_table.setRowCount(0)
+        self._positions_table.setRowCount(0)
+        self._lbl_daily_pnl.setText("0")
+        self._lbl_daily_pnl.setStyleSheet("")
+
+        if self._on_sim_requested:
+            self._on_sim_requested(date_str, interval, speed)
+        else:
+            QMessageBox.warning(self, "시뮬레이션", "시뮬레이션 엔진이 연결되지 않았습니다.")
+
+    def _on_manual_order(self, side: str) -> None:
+        """Handle manual buy/sell button click."""
+        code = self._order_code_edit.currentText().strip()
+        if not code:
+            QMessageBox.warning(self, "주문 오류", "종목코드를 입력하세요.")
+            return
+
+        qty = self._order_qty_spin.value() if self._order_qty_spin else 1
+        price = self._order_price_spin.value() if self._order_price_spin else 0
+
+        # Confirm
+        price_str = f"{price:,}원" if price > 0 else "시장가"
+        reply = QMessageBox.question(
+            self, f"{side} 주문 확인",
+            f"{code} {side} {qty}주 @ {price_str}\n실행하시겠습니까?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        if self._on_order_requested:
+            self._on_order_requested(code, side, qty, price)
+
     def get_mode(self) -> str:
         """Return current mode: 'paper' or 'live'."""
         return "live" if _HAS_PYQT5 and self._btn_mode.isChecked() else "paper"
@@ -486,3 +636,87 @@ class DashboardTab(QWidget if _HAS_PYQT5 else object):
                 )
                 cursor.removeSelectedText()
                 cursor.deleteChar()  # Remove trailing newline
+
+    def add_trade_record(self, trade) -> None:
+        """Add a TradeRecord to the simulation trade log table."""
+        if not _HAS_PYQT5:
+            return
+        row = self._trade_log_table.rowCount()
+        self._trade_log_table.insertRow(row)
+        ts = trade.timestamp.strftime("%H:%M:%S") if hasattr(trade.timestamp, "strftime") else str(trade.timestamp)
+        values = [
+            ts, trade.code, trade.side, trade.strategy,
+            _format_price(trade.price), str(trade.qty),
+            _format_price(trade.pnl) if trade.pnl else "",
+            _format_price(trade.balance),
+        ]
+        for c, text in enumerate(values):
+            item = QTableWidgetItem(text)
+            if trade.side == "SELL" and c == 6 and trade.pnl:
+                color = pnl_color(trade.pnl)
+                if color:
+                    item.setForeground(QColor(color))
+            self._trade_log_table.setItem(row, c, item)
+        self._trade_log_table.scrollToBottom()
+
+    def update_sim_positions(self, positions: dict, capital: float, initial: int,
+                            last_prices: dict | None = None) -> None:
+        """Update positions and P&L from ReplayEngine state.
+
+        Args:
+            positions: {code: {"qty": int, "avg_price": int, "highest_price": int}}
+            capital: Current cash balance.
+            initial: Initial capital.
+            last_prices: {code: last_close_price} for unrealized P&L calculation.
+        """
+        if not _HAS_PYQT5:
+            return
+        last_prices = last_prices or {}
+
+        # Positions table
+        self._positions_table.setRowCount(len(positions))
+        total_invested = 0
+        total_unrealized = 0
+        for r, (code, pos) in enumerate(positions.items()):
+            qty = pos.get("qty", 0)
+            avg = pos.get("avg_price", 0)
+            current = last_prices.get(code, avg)
+            invested = avg * qty
+            unrealized = (current - avg) * qty
+            pnl_pct = (current - avg) / avg * 100 if avg > 0 else 0
+            total_invested += invested
+            total_unrealized += unrealized
+
+            name = ""
+            if hasattr(self, "_settings") and hasattr(self._settings, "get_stock_name"):
+                name = self._settings.get_stock_name(code)
+            values = [
+                code, name, str(qty), _format_price(avg), _format_price(current),
+                _format_price(int(unrealized)), f"{pnl_pct:.2f}", "",
+            ]
+            for c, text in enumerate(values):
+                item = QTableWidgetItem(text)
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if c == 5:  # unrealized P&L
+                    color = pnl_color(unrealized)
+                    if color:
+                        item.setForeground(QColor(color))
+                if c == 6:  # pnl %
+                    color = pnl_color(pnl_pct)
+                    if color:
+                        item.setForeground(QColor(color))
+                self._positions_table.setItem(r, c, item)
+
+        # P&L summary
+        daily_pnl = capital - initial + total_unrealized
+        self._lbl_daily_pnl.setText(_format_price(int(daily_pnl)))
+        color = pnl_color(daily_pnl)
+        self._lbl_daily_pnl.setStyleSheet(
+            f"color: {color}; font-weight: bold;" if color else ""
+        )
+        self._lbl_unrealized_pnl.setText(_format_price(int(total_unrealized)))
+        ucolor = pnl_color(total_unrealized)
+        self._lbl_unrealized_pnl.setStyleSheet(
+            f"color: {ucolor}; font-weight: bold;" if ucolor else ""
+        )
+        self._lbl_total_invested.setText(_format_price(int(total_invested)))
