@@ -58,6 +58,133 @@ class MainWindow(QMainWindow):
     def _setup_ui(self):
         self.setWindowTitle("KiwoomDayTrader")
         self.setMinimumSize(1200, 800)
+        self._apply_dark_theme()
+
+    def _apply_dark_theme(self):
+        """Apply cohesive dark trading terminal theme."""
+        self.setStyleSheet("""
+            QMainWindow, QWidget {
+                background-color: #1A1A1A;
+                color: #E0E0E0;
+            }
+            QTabWidget::pane {
+                border: 1px solid #3A3A3A;
+            }
+            QTabBar::tab {
+                background-color: #2A2A2A;
+                color: #E0E0E0;
+                padding: 6px 20px;
+                border: 1px solid #3A3A3A;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background-color: #404040;
+                border-bottom: 2px solid #26A69A;
+            }
+            QTableWidget {
+                background-color: #1F1F1F;
+                alternate-background-color: #2A2A2A;
+                gridline-color: #3A3A3A;
+                color: #E0E0E0;
+                border: 1px solid #3A3A3A;
+                font-family: "Courier New";
+                font-size: 11pt;
+            }
+            QHeaderView::section {
+                background-color: #2A2A2A;
+                color: #E0E0E0;
+                padding: 4px;
+                border: 1px solid #3A3A3A;
+                font-weight: bold;
+            }
+            QGroupBox {
+                border: 1px solid #3A3A3A;
+                border-radius: 4px;
+                margin-top: 12px;
+                padding-top: 10px;
+                color: #E0E0E0;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px;
+            }
+            QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QDateEdit {
+                background-color: #2A2A2A;
+                color: #E0E0E0;
+                border: 1px solid #3A3A3A;
+                padding: 4px;
+                border-radius: 3px;
+            }
+            QComboBox:focus, QSpinBox:focus, QLineEdit:focus, QDateEdit:focus {
+                border: 1px solid #26A69A;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2A2A2A;
+                color: #E0E0E0;
+                selection-background-color: #26A69A;
+            }
+            QPushButton {
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+                border: none;
+                background-color: #3A3A3A;
+                color: #E0E0E0;
+            }
+            QPushButton:hover {
+                background-color: #4A4A4A;
+            }
+            QLabel {
+                color: #E0E0E0;
+            }
+            QStatusBar {
+                background-color: #2A2A2A;
+                color: #E0E0E0;
+                border-top: 1px solid #3A3A3A;
+            }
+            QListWidget {
+                background-color: #1F1F1F;
+                color: #E0E0E0;
+                border: 1px solid #3A3A3A;
+            }
+            QListWidget::item:selected {
+                background-color: #26A69A;
+            }
+            QTextEdit {
+                background-color: #1F1F1F;
+                color: #E0E0E0;
+                border: 1px solid #3A3A3A;
+                font-family: "Courier New";
+                font-size: 9pt;
+            }
+            QCheckBox {
+                color: #E0E0E0;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QSplitter::handle {
+                background-color: #3A3A3A;
+            }
+            QScrollBar:vertical {
+                background-color: #1A1A1A;
+                width: 10px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #3A3A3A;
+                border-radius: 5px;
+            }
+            QProgressDialog {
+                background-color: #2A2A2A;
+            }
+            QDialog {
+                background-color: #1A1A1A;
+                color: #E0E0E0;
+            }
+        """)
 
         # Central tab widget
         self._tabs = QTabWidget()

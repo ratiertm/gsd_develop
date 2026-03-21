@@ -156,21 +156,33 @@ class ReplayEngine:
             if on_candle:
                 on_candle(code, candle)
 
-            # Feed to strategy
+            # Feed to strategy — separate BUY and SELL to avoid same-candle conflict
             signals = strategy_manager.on_candle_complete(code, candle)
+            bought_this_candle: set[str] = set()
+
+            # Process BUY signals first
             for sig in signals:
-                if on_signal:
-                    on_signal(sig)
                 if sig.side == "BUY":
+                    if on_signal:
+                        on_signal(sig)
                     if self._check_daily_loss(candle.timestamp.date()):
                         logger.debug(f"[REPLAY] Daily loss limit hit, skipping BUY {sig.code}")
                     else:
                         self._execute_buy(sig, candle)
-                elif sig.side == "SELL":
+                        bought_this_candle.add(sig.code)
+
+            # Process SELL signals (skip if just bought on this candle)
+            for sig in signals:
+                if sig.side == "SELL":
+                    if sig.code in bought_this_candle:
+                        logger.debug(f"[REPLAY] Skip SELL {sig.code} — just bought this candle")
+                        continue
+                    if on_signal:
+                        on_signal(sig)
                     self._execute_sell(sig.code, sig.price, sig.reason, candle)
 
-            # Risk triggers
-            self._check_risk_triggers(candle)
+            # Risk triggers (also skip codes bought this candle)
+            self._check_risk_triggers(candle, skip_codes=bought_this_candle)
 
             # Equity snapshot
             self._record_equity(candle)
@@ -540,7 +552,7 @@ class ReplayEngine:
             timestamp=candle.timestamp,
             code=code,
             side="SELL",
-            strategy="replay",
+            strategy=reason.split(" ")[0] if reason else "risk",
             price=price,
             qty=qty,
             amount=proceeds,
@@ -551,8 +563,10 @@ class ReplayEngine:
         ))
         logger.debug(f"[REPLAY SELL] {code} qty={qty} price={price} pnl={pnl:.0f}")
 
-    def _check_risk_triggers(self, candle: Candle) -> None:
+    def _check_risk_triggers(self, candle: Candle, skip_codes: set[str] | None = None) -> None:
         code = candle.code
+        if skip_codes and code in skip_codes:
+            return
         if code not in self._positions:
             return
 

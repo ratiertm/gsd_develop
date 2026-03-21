@@ -310,7 +310,8 @@ def main():
 
         # Get tab references for signal wiring
         dashboard = main_window._dashboard_tab
-        dashboard._settings = settings  # for stock name lookup
+        dashboard._settings = settings  # for stock name lookup + watchlist
+        dashboard._on_strategy_reload = _reload_strategies  # hot-swap on watchlist change
         chart_tab = main_window._chart_tab
         strategy_tab = main_window._strategy_tab
 
@@ -335,8 +336,8 @@ def main():
             # Refresh UI with names
             if hasattr(chart_tab, 'refresh_watchlist_names'):
                 chart_tab.refresh_watchlist_names()
-            if hasattr(strategy_tab, '_load_watchlist'):
-                strategy_tab._load_watchlist()
+            if hasattr(dashboard, 'load_watchlist'):
+                dashboard.load_watchlist()
         elif api is not None:
             # Live mode: resolver that queries API and caches
             def _resolve_name(code):

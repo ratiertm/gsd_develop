@@ -301,13 +301,52 @@ class StrategyManager:
         return surviving
 
     def _resolve_conflicts(self, signals: list[Signal]) -> list[Signal]:
-        """Keep highest priority signal per (code, side) pair."""
+        """Resolve signal conflicts using priority-weighted voting.
+
+        1. Per (code, side): keep highest priority signal
+        2. Cross-side conflict (BUY vs SELL for same code):
+           - Compare BUY weight sum vs SELL weight sum
+           - Only the winning side survives
+           - If tied, no action (skip both)
+        """
+        # Step 1: best signal per (code, side)
         best: dict[tuple[str, str], Signal] = {}
         for sig in signals:
             key = (sig.code, sig.side)
             if key not in best or sig.priority > best[key].priority:
                 best[key] = sig
-        return list(best.values())
+
+        # Step 2: cross-side conflict resolution per code
+        # Collect weight sums per code per side
+        code_weights: dict[str, dict[str, int]] = {}
+        for sig in signals:
+            if sig.code not in code_weights:
+                code_weights[sig.code] = {"BUY": 0, "SELL": 0}
+            code_weights[sig.code][sig.side] += sig.priority
+
+        # Remove losing side from best
+        result: list[Signal] = []
+        for (code, side), sig in best.items():
+            weights = code_weights.get(code, {})
+            buy_w = weights.get("BUY", 0)
+            sell_w = weights.get("SELL", 0)
+
+            if buy_w > 0 and sell_w > 0:
+                # Conflict: only winning side passes
+                if side == "BUY" and buy_w > sell_w:
+                    result.append(sig)
+                elif side == "SELL" and sell_w > buy_w:
+                    result.append(sig)
+                else:
+                    # Tied or losing side — skip
+                    logger.debug(
+                        f"[CONFLICT] {code} {side} dropped (BUY={buy_w} vs SELL={sell_w})"
+                    )
+            else:
+                # No conflict
+                result.append(sig)
+
+        return result
 
     def _check_cooldown(self, code: str, signal: Signal) -> bool:
         """Return True if signal passes cooldown check (enough time elapsed)."""

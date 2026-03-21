@@ -388,30 +388,7 @@ class StrategyTab(QWidget if _HAS_PYQT5 else object):
         top_splitter.setStretchFactor(0, 3)
         top_splitter.setStretchFactor(1, 7)
 
-        layout.addWidget(top_splitter, stretch=7)
-
-        # --- Bottom section: Watchlist manager ---
-        watchlist_group = QGroupBox("Watchlist Management")
-        watchlist_layout = QVBoxLayout()
-
-        self._watchlist_table = QTableWidget()
-        self._watchlist_table.setColumnCount(3)
-        self._watchlist_table.setHorizontalHeaderLabels(["종목코드", "종목명", "적용 전략"])
-        self._watchlist_table.cellDoubleClicked.connect(self._on_watchlist_double_click)
-        self._load_watchlist()
-        watchlist_layout.addWidget(self._watchlist_table)
-
-        wl_btn_layout = QHBoxLayout()
-        btn_add_stock = QPushButton("종목 추가")
-        btn_add_stock.clicked.connect(self._on_add_stock)
-        btn_remove_stock = QPushButton("종목 제거")
-        btn_remove_stock.clicked.connect(self._on_remove_stock)
-        wl_btn_layout.addWidget(btn_add_stock)
-        wl_btn_layout.addWidget(btn_remove_stock)
-        watchlist_layout.addLayout(wl_btn_layout)
-
-        watchlist_group.setLayout(watchlist_layout)
-        layout.addWidget(watchlist_group, stretch=3)
+        layout.addWidget(top_splitter, stretch=10)
 
     # ------------------------------------------------------------------ #
     # Strategy list management

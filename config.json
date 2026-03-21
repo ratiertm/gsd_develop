@@ -10,7 +10,7 @@
     "005930",
     "035720"
   ],
-  "mode": "live",
+  "mode": "paper",
   "candle_interval_minutes": 1,
   "total_capital": 10000000,
   "strategies": [
@@ -496,17 +496,12 @@
     "005930": [
       "MA_CROSSOVER",
       "RSI_REVERSAL",
-      "BOLLINGER_REVERSAL"
-    ],
-    "035720": [
-      "MA_CROSSOVER",
-      "RSI_REVERSAL",
       "BOLLINGER_REVERSAL",
       "MACD_SIGNAL_CROSS",
       "VWAP_BREAKOUT",
       "GAP_REVERSAL"
     ],
-    "한화에에로스페이스": [
+    "035720": [
       "MA_CROSSOVER",
       "RSI_REVERSAL",
       "BOLLINGER_REVERSAL",
